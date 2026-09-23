@@ -129,4 +129,4 @@ docs/                    measurements.md, hardware_test.md, img/
 
 ## 참고
 Hasinoff et al. 2016 *Burst photography for high dynamic range and low-light imaging on mobile cameras* (HDR+) ·
-He et al. 2010 *Guided Image Filtering* · MediaPipe Selfie Segmentation · 설계 배경: `Google_Pixel카메라_burstpipe_설계.md`, 구현 계획: `Google_Pixel카메라_burstpipe_개발문서.md`
+He et al. 2010 *Guided Image Filtering* · MediaPipe Selfie Segmentation
