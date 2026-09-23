@@ -33,6 +33,12 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
 
+![C55 세그 마스크](docs/img/c55_seg_mask.jpg)
+*[C55] 인물 세그 마스크 (NPU/GPU 추론 → 가이디드 필터 정제). 센서 방향 보정 후 전신이 잡힌다*
+
+![C55 합성 가중치](docs/img/c55_motion_weight.jpg)
+*[C55] 손 흔드는 장면의 합성 가중치 (검정 = 거부): 손 궤적이 0이라 다중 손 고스트가 없다*
+
 ![C55 저조도](docs/img/c55_lowlight_crop.jpg)
 *[C55] ISO 6400 1/30s 크롭: 단일 | 8장 합성*
 
