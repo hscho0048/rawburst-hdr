@@ -20,6 +20,7 @@ struct BurstMeta {
   float wb_gains[4] = {1, 1, 1, 1};          // R, G_even(Gr), G_odd(Gb), B
   float ccm[9] = {1, 0, 0, 0, 1, 0, 0, 0, 1};  // 행 우선, sensor RGB → linear sRGB
   float noise_a = 0, noise_b = 0;            // 0,0이면 프로파일 없음
+  int orientation = 0;                       // SENSOR_ORIENTATION: 센서 영상을 시계방향으로 이만큼 돌리면 정립 (0/90/180/270)
   std::vector<FrameMeta> frames;
   // CFA 위치 (x&1,y&1)의 블랙레벨과 WB 게인
   float black_at(int x, int y) const { return black_level[(y & 1) * 2 + (x & 1)]; }

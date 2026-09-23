@@ -47,6 +47,33 @@ void bayer_to_rgb256(const Image<uint16_t>& b, const BurstMeta& m, float ev_gain
       for (int c = 0; c < 3; ++c) o[c] = std::pow(std::min(1.f, rgb[c] * ev_gain), 1.f / 2.2f);
     }
   }
+  const int deg = ((m.orientation % 360) + 360) % 360;
+  if (deg) {
+    std::vector<float> tmp(out, out + 256 * 256 * 3);
+    rotate256(tmp.data(), out, 3, deg);
+  }
+}
+
+void rotate256(const float* src, float* dst, int ch, int deg_cw) {
+  // 시계방향 90°: src(x,y) → dst(255−y, x)
+  for (int y = 0; y < 256; ++y)
+    for (int x = 0; x < 256; ++x) {
+      int dx = x, dy = y;
+      switch (deg_cw) {
+        case 90: dx = 255 - y; dy = x; break;
+        case 180: dx = 255 - x; dy = 255 - y; break;
+        case 270: dx = y; dy = 255 - x; break;
+        default: break;
+      }
+      for (int c = 0; c < ch; ++c) dst[(dy * 256 + dx) * ch + c] = src[(y * 256 + x) * ch + c];
+    }
+}
+
+void mask256_to_sensor(float* mask, int orientation) {
+  const int deg = ((orientation % 360) + 360) % 360;
+  if (!deg) return;
+  std::vector<float> tmp(mask, mask + 256 * 256);
+  rotate256(tmp.data(), mask, 1, (360 - deg) % 360);
 }
 
 namespace {

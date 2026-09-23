@@ -116,6 +116,8 @@ class BurstDumper(
                 sb.append("noise_profile $a $b\n")
             }
         }
+        // 세그 모델 입력을 정립시키는 데 쓴다 (폰 세로 고정 가정: 센서 방향 그대로)
+        sb.append("orientation ${chars.get(CameraCharacteristics.SENSOR_ORIENTATION) ?: 0}\n")
         for (i in 0 until count) {
             val r = results[timestamps[i]]
             sb.append("frame $i ${timestamps[i]} ${r?.get(CaptureResult.SENSOR_EXPOSURE_TIME) ?: 0} ${r?.get(CaptureResult.SENSOR_SENSITIVITY) ?: 0}\n")

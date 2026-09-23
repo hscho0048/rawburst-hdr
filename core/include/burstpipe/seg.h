@@ -23,7 +23,12 @@ class Segmenter {
   virtual bool run(const float* rgb256 /*256*256*3, [0,1]*/, float* mask256 /*256*256*/) = 0;
 };
 
-// RAW → 2×2 슈퍼픽셀 → 256×256 RGB (감마 2.2, 비균등 리사이즈). 모델 입력.
+// RAW → 2×2 슈퍼픽셀 → 256×256 RGB (감마 2.2, 비균등 리사이즈) → m.orientation만큼 시계방향 회전(정립). 모델 입력.
+// 인물 모델은 정립된 사람을 기대한다 — 센서 방향(폰 세로 = 90°) 그대로 넣으면 옆으로 누운 사람이라 마스크가 반쪽이 된다.
 void bayer_to_rgb256(const Image<uint16_t>& bayer, const BurstMeta& m, float ev_gain, float* rgb256);
+// 정립 좌표의 256×256 마스크를 센서 좌표로 되돌린다 (in-place, orientation만큼 반시계 회전)
+void mask256_to_sensor(float* mask256, int orientation);
+// 256×256 × ch 배열을 시계방향 deg(0/90/180/270)만큼 회전. src≠dst
+void rotate256(const float* src, float* dst, int ch, int deg_cw);
 
 }  // namespace bp

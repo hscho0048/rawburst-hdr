@@ -6,6 +6,8 @@
         android:label="burstpipe"
         android:largeHeap="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
+        <!-- Android 12+: 벤더 OpenCL을 앱 네임스페이스에 노출. 없으면 GPU 델리게이트가 OpenGL로 폴백 (실측 32-50 ms vs OpenCL ~19 ms) -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

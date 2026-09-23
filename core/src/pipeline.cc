@@ -46,6 +46,7 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
       auto t0 = std::chrono::steady_clock::now();
       bayer_to_rgb256(b.frames[0], b.meta, p_.finish.ev_gain, rgb256_.data());
       seg_ok = seg->run(rgb256_.data(), mask_buf_.data());
+      if (seg_ok) mask256_to_sensor(mask_buf_.data(), b.meta.orientation);  // 정립 좌표 → 센서 좌표
       seg_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
     });
   }

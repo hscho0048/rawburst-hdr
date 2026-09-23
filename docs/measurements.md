@@ -117,14 +117,32 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 - 색: ForwardMatrix CCM으로 흰 벽·피부가 자연스러움 (결과 CCM 단위행렬 그대로면 채도 저하). `docs/img/c55_portrait_highlight.jpg`
 - RAW가 매우 어둡다 (중앙값 블랙+15 DN): EV −1.5 + 실내. 저신호 구간은 읽기 노이즈 지배.
 
-### 아직 안 한 것
-- LiteRT 세그 CPU vs GPU + 실제 인물 보케 (`scripts/fetch_litert.sh` 다운로드 필요)
+### 세그멘테이션 LiteRT 2.16.1 (MediaPipe selfie_segmenter float16, 인물 덤프 #5)
+
+| 경로 | init | seg_infer_parallel | seg_wait | 부작용 |
+|---|---|---|---|---|
+| cli CPU (XNNPACK 4스레드 + 자체 커스텀 op) | 308 ms | 370–380 ms | 0.0 | big 코어 경쟁: align 47 → 257 ms, total 502 → 837 ms |
+| cli CPU, 세그 스레드 little(`--seg-cpu 0`) | — | 256 ms | 0.0 | align 188 ms, total 688 ms (XNNPACK 워커는 고정 안 됨) |
+| cli GPU (OpenCL, 246/246 노드 위임) | 2.2–2.4 s | **19–31 ms** | 0.0–0.1 | 없음. total 502 ms (보케 포함) |
+| 앱 GPU, OpenGL 폴백 | 0.23 s | 32–50 ms | 0.04 | — |
+| 앱 GPU, OpenCL (`uses-native-library libOpenCL.so`) | 2.7 s (앱 시작 시 백그라운드) | **19–35 ms** | 0.04 | — |
+
+- 앱 셔터→JPEG (인물모드, 보케 포함, 연속 5회): **1238–1316 ms** (캡처 ~490 + 처리 ~610 + JPEG ~150)
+- 커스텀 op 검증: 자체 CPU 구현 마스크 vs GPU 델리게이트 내장 구현 마스크 **IoU 0.998**, 평균 |Δα| 0.001
+- 방향 수정 전/후 (같은 버스트): 전경 비율 2.9% → **15.2%** (전신). `docs/img/c55_portrait_bokeh.jpg` (합성 | 정제 마스크 | 보케)
+
+실기기에서 찾은 통합 버그 3개
+1. **커스텀 op**: selfie_segmenter는 `Convolution2DTransposeBias`(MediaPipe 전용)를 써서 표준 TFLite가 로드 실패 → C API `TfLiteInterpreterOptionsAddCustomOp`로 전치 합성곱 + bias 커널 등록.
+2. **센서 방향**: RAW는 센서 방향(90°) 그대로라 모델이 옆으로 누운 사람을 받음 → 머리·상체만 검출. `meta.txt`에 `orientation` 추가, 모델 입력을 정립 회전하고 마스크를 되돌림 (`test_seg` 왕복 테스트).
+3. **델리게이트 스레드 친화성**: 앱에서 "GpuDelegate must run on the same thread where it was initialized" → 보케가 조용히 꺼짐. 생성·추론·해제를 전용 스레드 1개가 소유 (`ThreadBoundSegmenter`, 설계문서 6장). cli는 우연히 통과했었다.
 
 ## 5. 서술 ("X→Y ms, 원인 Z") — 기기 수치로 채울 것
 1. (PC-emu 예비) merge 타일 선택을 "정렬 타일 1개의 err" → "footprint 후보 최대 4개 중 최소 SAD"로 바꾸자 조명 경계의 밝기 번짐(최대 +450 DN)이 사라지고 삼각대 RMSE 4.58 → 1.65 DN (8장 평균 이론치).
 2. (AVD 예비) HAL noise_profile a=1.0을 그대로 쓰면 움직임 거부가 꺼짐(mean_weight 0.999) → 타당성 검사 후 추정으로 대체해 0.815.
 3. (C55) merge 901 → 280 ms (scalar 1→4 big, 3.2배) → 165 ms (NEON, 1.7배). L0 대비 5.5배.
 4. (C55) 4스레드 little 고정은 big 대비 5.3배 느림(2360 vs 442 ms). 8스레드 미고정(373 ms)이 4 big 고정(442 ms)보다 빠름 — A510이 타일을 "물고 늘어진다"는 설계문서 가설과 반대. 동적 작업 큐(원자 카운터)라 느린 코어가 적게 가져가기 때문. NEON에서는 차이 8%(271 vs 295).
+6. (C55) 세그 CPU 델리게이트 370 ms가 합성 스레드와 big 코어를 다퉈 align 47 → 257 ms, 임계 경로 +335 ms. GPU(OpenCL) 19–31 ms로 옮기자 경쟁이 사라지고 seg_wait 0 — 추론은 합성 뒤에 완전히 숨는다.
+7. (C55) 앱 GPU 델리게이트가 OpenGL로 폴백(32–50 ms) — Android 12+ 앱 네임스페이스에 벤더 libOpenCL이 없어서. `uses-native-library` 선언 후 OpenCL 19–35 ms, 대신 init 0.23 → 2.7 s (앱 시작 시 웜업으로 숨김).
 5. (C55) 합성 후보 재평가(PC-emu 서술 1의 품질 수정)가 `tile_sad_neon` 31%의 상당 부분 — 품질과 속도의 교환. 다음 최적화 대상.
 
 ## 6. 하지 않은 것과 이유

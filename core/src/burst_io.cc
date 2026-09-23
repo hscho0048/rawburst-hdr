@@ -16,6 +16,7 @@ bool parse_meta(std::istream& f, BurstMeta& m) {
     else if (key == "wb_gains") for (float& v : m.wb_gains) f >> v;
     else if (key == "ccm") for (float& v : m.ccm) f >> v;
     else if (key == "noise_profile") f >> m.noise_a >> m.noise_b;
+    else if (key == "orientation") f >> m.orientation;
     else if (key == "frame") {
       int idx; FrameMeta fm;
       f >> idx >> fm.timestamp_ns >> fm.exposure_ns >> fm.iso;
@@ -41,6 +42,7 @@ std::string format_meta(const BurstMeta& m) {
   for (float v : m.ccm) s << " " << v;
   s << "\n";
   if (m.noise_a > 0 || m.noise_b > 0) s << "noise_profile " << m.noise_a << " " << m.noise_b << "\n";
+  if (m.orientation) s << "orientation " << m.orientation << "\n";
   for (size_t i = 0; i < m.frames.size(); ++i)
     s << "frame " << i << " " << m.frames[i].timestamp_ns << " " << m.frames[i].exposure_ns << " " << m.frames[i].iso << "\n";
   return s.str();

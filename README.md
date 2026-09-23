@@ -1,7 +1,7 @@
 # burstpipe
 
 RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘테이션 인물모드 파이프라인. C++17, camera HAL 아래 계층.
-대상 기기 Galaxy C55 (Snapdragon 7 Gen 1). **현재 단계: 에뮬레이션 완성 + Galaxy C55 실측 (세그 LiteRT 제외)** — 아래 모든 숫자는 출처가 표시돼 있다.
+대상 기기 Galaxy C55 (Snapdragon 7 Gen 1). **현재 단계: 에뮬레이션 완성 + Galaxy C55 실측 완료** — 아래 모든 숫자는 출처가 표시돼 있다.
 
 ![단일 프레임 | 8장 합성 | 합성+보케](docs/img/compare_portrait.jpg)
 *[PC-emu] 센서 에뮬레이터 인물 세트 4080×3060 × 8장. 단일 프레임 | 8장 합성 | 합성 + 세그 마스크 보케*
@@ -20,9 +20,13 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 | 12MP×8 합성 (NEON, big 4코어) | **295 ms** (scalar 1스레드 1425 ms) | **C55** |
 | 앱 셔터→JPEG (연속 5회) | **1.04–1.14 s** | **C55** |
 | SNR 이득, 실제 장면 | 정적 핸드헬드 **8.1 dB**, ISO 6400 **9.9 dB** | **C55** |
-| 세그 LiteRT CPU vs GPU | — (다운로드 대기) | [hardware_test.md](docs/hardware_test.md) 6 |
+| 세그 LiteRT GPU(OpenCL) vs CPU | **19–31 ms** vs 370 ms (CPU는 합성과 big 코어 경쟁), seg_wait 0 | **C55** |
+| 앱 셔터→JPEG, 인물모드(보케 포함) | **1.24–1.32 s** | **C55** |
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
+
+![C55 인물](docs/img/c55_portrait_bokeh.jpg)
+*[C55] 인물: 8장 합성 | 세그 마스크(GPU, 가이디드 필터 정제) | 보케*
 
 ![C55 움직임](docs/img/c55_motion.jpg)
 *[C55] 손 흔들기: 단일 frame 0 | 8장 합성(가장 선명한 프레임 참조, 고스트 없음) | 합성 가중치*
@@ -61,7 +65,11 @@ emu/ (core가 모르는 에뮬레이션 계층)
 2. **HAL 노이즈 프로파일 신뢰성**: Android 에뮬레이터 HAL이 `noise_profile a=1.0`을 준다 → 모든 타일이 "노이즈 이내"라 고스트 거부가 꺼짐(mean_weight 0.999). 범위 검사 후 정렬 오차 중앙값 추정으로 대체 → 0.815.
 3. **하이라이트 분홍**: G가 포화한 광원에서 R/B만 WB 게인만큼 커져 마젠타 → WB 후 1.0 클립.
 4. **스레드풀 레이스**: 늦게 깬 워커가 다음 `parallel_for`의 인덱스를 이전 fn으로 소비할 수 있었다 → 매 generation 전 워커 체크인 (20000회 스트레스 테스트).
-5. 개발문서의 정렬 테스트 텍스처 `((x/8)*73+(y/8)*151)%11`은 (32,16)px 주기 격자라 거친 단에서 가짜 정합 → 비주기 랜덤 블록으로 교체.
+5. **(C55) MediaPipe 커스텀 op**: `Convolution2DTransposeBias`를 C API로 직접 구현·등록 (GPU 내장 구현과 마스크 IoU 0.998).
+6. **(C55) 센서 방향**: 모델이 옆으로 누운 사람을 받아 상체만 검출 → 정립 회전 후 마스크 역회전, 전경 2.9% → 15.2%.
+7. **(C55) GPU 델리게이트 스레드 친화성**: 앱에서만 추론 실패(보케가 조용히 꺼짐) → 델리게이트 전용 소유 스레드.
+8. **(C55) 결과 CCM 단위행렬** → ForwardMatrix로 CCM 계산. **앱 OpenCL 폴백** → `uses-native-library`.
+9. 개발문서의 정렬 테스트 텍스처 `((x/8)*73+(y/8)*151)%11`은 (32,16)px 주기 격자라 거친 단에서 가짜 정합 → 비주기 랜덤 블록으로 교체.
 
 ## 빌드·실행
 

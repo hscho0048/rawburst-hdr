@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """사용: seg_infer.py in.png out_mask.bin [models/selfie_segmenter.tflite]
 실제 MediaPipe Selfie Segmentation(LiteRT)으로 256×256 float32 마스크를 만든다. (pip install ai-edge-litert numpy pillow)
+주의: selfie_segmenter는 MediaPipe 커스텀 op(Convolution2DTransposeBias)를 써서 표준 LiteRT Python으로는 로드가 실패한다
+(C++ 쪽은 seg_litert.cc가 커스텀 op를 직접 등록). 이 스크립트는 커스텀 op 없는 모델(예: DeepLabV3)용.
 에뮬레이터 인물 세트는 합성 인물이라 실제 모델이 잘 못 잡을 수 있다 → 그때는 bursts/emu_portrait/mask_emu.bin 을 쓴다."""
 import sys, numpy as np
 from PIL import Image
