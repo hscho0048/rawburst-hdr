@@ -20,4 +20,10 @@ object Native {
      * 기기 없이 JNI·보케 경로를 검증하는 용도 (adb push bursts/emu_portrait_half ...). 반환: timings json
      */
     external fun processDir(dir: String, outRgba: ByteBuffer): String
+
+    /** Camera2 NDK 캡처 경로: 프리뷰 Surface로 카메라를 C++에서 연다. 반환: 상태 문자열 */
+    external fun ndkOpen(preview: android.view.Surface, n: Int): String
+    external fun ndkClose()
+    /** NDK 버스트 캡처 + 처리 (블로킹). 반환: timings json ("capture" 포함), 실패 시 "" */
+    external fun ndkShoot(outRgba: ByteBuffer): String
 }

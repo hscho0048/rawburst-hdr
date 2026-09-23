@@ -10,7 +10,9 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <android/native_window_jni.h>
 #include "burstpipe/perf_hint.h"
+#include "ndk_camera.h"
 #include "burstpipe/pipeline.h"
 #include "burstpipe/seg.h"
 
@@ -28,6 +30,9 @@ float g_headroom = -1.f;
 bp::ThermalPolicy g_policy;
 bp::LatencyGovernor g_gov;
 bool g_use_gov = false;
+std::unique_ptr<bp::NdkCamera> g_ndk;
+ANativeWindow* g_ndk_window = nullptr;
+
 
 std::string with_extra(const bp::Timings& t, const bp::PipelineOutput& o, double wall_ms) {
   std::string js = t.json();
@@ -45,6 +50,27 @@ bool copy_out(JNIEnv* env, jobject outRgba, const bp::Image<uint8_t>& rgba) {
   for (int y = 0; y < rgba.h; ++y) std::memcpy(dst + (size_t)y * row, rgba.row(y), row);
   return true;
 }
+// Native.process와 같은 처리 (정책·ADPF·타이밍 JSON). frames는 호출자 소유 포인터.
+std::string run_burst(bp::Burst& b, int n, double extra_capture_ms, JNIEnv* env, jobject outRgba) {
+  const float h = bp::thermal_headroom(10);
+  if (h >= 0) g_headroom = h;
+  if (g_thermal_policy) n = std::min(n, g_use_gov ? g_gov.frames() : g_policy.frames_for(g_headroom));
+  b.frames.resize(n); b.meta.frames.resize(n);
+  bp::Timings t;
+  auto t0 = std::chrono::steady_clock::now();
+  const bp::PipelineOutput& o = g_pipe->run(b, nullptr, g_seg.get(), t);
+  const double wall = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+  if (g_adpf) g_adpf->report((int64_t)(wall * 1e6));
+  if (g_thermal_policy && g_use_gov) g_gov.report(t.total());
+  if (!copy_out(env, outRgba, o.rgba)) return "";
+  std::string js = with_extra(t, o, wall);
+  char extra[160];
+  std::snprintf(extra, sizeof extra, ",\"frames\":%d,\"headroom\":%.4f,\"thermal_status\":%d,\"capture\":%.1f}", n, g_headroom,
+                bp::thermal_status(), extra_capture_ms);
+  js.pop_back(); js += extra;
+  return js;
+}
+
 }  // namespace
 
 extern "C" JNIEXPORT jstring JNICALL
@@ -136,6 +162,41 @@ Java_dev_burstpipe_Native_setPolicy(JNIEnv* env, jobject, jint adpfTargetMs, jbo
                 bp::thermal_headroom(10), bp::thermal_status());
   LOGI("policy %s", buf);
   return env->NewStringUTF(buf);
+}
+
+// ---- Camera2 NDK 캡처 경로 (Kotlin 캡처 대신) ----
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_burstpipe_Native_ndkOpen(JNIEnv* env, jobject, jobject surface, jint n) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  g_ndk.reset();
+  if (g_ndk_window) { ANativeWindow_release(g_ndk_window); g_ndk_window = nullptr; }
+  g_ndk_window = ANativeWindow_fromSurface(env, surface);
+  std::string info;
+  g_ndk = bp::NdkCamera::open(g_ndk_window, n, &info);
+  return env->NewStringUTF(info.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_dev_burstpipe_Native_ndkClose(JNIEnv*, jobject) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  g_ndk.reset();
+  if (g_ndk_window) { ANativeWindow_release(g_ndk_window); g_ndk_window = nullptr; }
+}
+
+// 버스트 캡처 → 곧바로 파이프라인 (프레임은 네이티브 슬롯, Java 경유 없음). 반환: timings json (capture 포함)
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_burstpipe_Native_ndkShoot(JNIEnv* env, jobject, jobject outRgba) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  if (!g_ndk || !g_pipe) return env->NewStringUTF("");
+  bp::NdkBurst nb;
+  if (!g_ndk->shoot(nb, 3000)) return env->NewStringUTF("");
+  bp::Burst b;
+  std::istringstream is(nb.meta_text);
+  if (!bp::parse_meta(is, b.meta) || b.meta.width != g_w || b.meta.height != g_h) { LOGI("ndk meta mismatch"); return env->NewStringUTF(""); }
+  for (int i = 0; i < nb.count; ++i) b.frames.push_back(bp::Image<uint16_t>{g_w, g_h, g_w, nb.frames[i]});
+  std::string js = run_burst(b, nb.count, nb.capture_ms, env, outRgba);
+  LOGI("ndk timings %s", js.c_str());
+  return env->NewStringUTF(js.c_str());
 }
 
 extern "C" JNIEXPORT jstring JNICALL

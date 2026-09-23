@@ -37,6 +37,7 @@ class MainActivity : Activity(), CaptureController.Listener {
     private var pendingDir: String? = null
     private var stressLeft = 0
     private var pendingPolicy: String? = null
+    @Volatile private var ndkMode = false
     private var stressTotal = 0
 
     override fun onCreate(b: Bundle?) {
@@ -57,6 +58,7 @@ class MainActivity : Activity(), CaptureController.Listener {
         setContentView(root)
 
         cam = CaptureController(this, this)
+        ndkMode = intent?.getStringExtra("capture") == "ndk"  // Camera2 NDK 캡처 (C++) 경로
         setStatus(cam.describe())
         shoot.setOnClickListener { doShoot(false) }
         dump.setOnClickListener { doShoot(true) }
@@ -93,7 +95,8 @@ class MainActivity : Activity(), CaptureController.Listener {
     private fun runPendingWhenReady() {
         val a = pendingAction ?: return
         val needCam = a != "emu"
-        if ((needCam && !(cam.ready && nativeReady)) || (!needCam && !nativeReady && cam.cameraId != null)) {
+        val camReady = if (ndkMode) nativeReady else cam.ready
+        if ((needCam && !(camReady && nativeReady)) || (!needCam && !nativeReady && cam.cameraId != null)) {
             window.decorView.postDelayed({ runPendingWhenReady() }, 300); return
         }
         pendingAction = null
@@ -113,7 +116,7 @@ class MainActivity : Activity(), CaptureController.Listener {
     }
 
     private fun openCamera(h: SurfaceHolder) {
-        cam.start(h.surface)
+        if (!ndkMode) cam.start(h.surface)
         if (nativeReady || cam.rawSize.width == 0) return
         procHandler.post {
             // 세그 모델이 assets에 있으면 사용 (LiteRT 포함 빌드에서만 성공). 없으면 보케 생략.
@@ -132,12 +135,14 @@ class MainActivity : Activity(), CaptureController.Listener {
             val cpus = if (cores >= 8) intArrayOf(4, 5, 6, 7) else IntArray(0)   // SM7450: 4~7 = A710
             val threads = minOf(4, cores)
             val st = Native.init(cam.rawSize.width, cam.rawSize.height, cam.n, model, delegate, threads, cpus)
+            val ndkInfo = if (ndkMode) Native.ndkOpen(h.surface, cam.n) else ""
             nativeReady = true
-            setStatus("${cam.describe()}\nnative: threads=$threads cpus=${cpus.joinToString(",")} $st")
+            setStatus("${cam.describe()}\nnative: threads=$threads cpus=${cpus.joinToString(",")} $st $ndkInfo")
         }
     }
 
     private fun doShoot(dump: Boolean) {
+        if (ndkMode) { doShootNdk(); return }
         if (!cam.ready || !nativeReady) { setStatus("카메라 준비 중"); return }
         shutterAt = SystemClock.elapsedRealtime()
         if (!cam.shoot(dump)) { Log.w(CaptureController.TAG, "shoot rejected (busy)"); setStatus("이전 버스트 진행 중") }
@@ -155,6 +160,27 @@ class MainActivity : Activity(), CaptureController.Listener {
             val wall = SystemClock.elapsedRealtime() - shutterAt
             val msg = "shutter→jpeg ${wall}ms (capture ${d.captureMs} + process $procMs + jpeg) frames=${d.count}\n" +
                 (d.dir?.let { "dump: $it\n" } ?: "") + "jpeg: ${jpg.name}\n$json"
+            Log.i(CaptureController.TAG, "RESULT $msg")
+            setStatus(msg)
+            if (stressLeft > 0) {
+                stressLeft--
+                Log.i(CaptureController.TAG, "STRESS shot=${stressTotal - stressLeft} wall=$wall $json")
+                if (stressLeft > 0) window.decorView.postDelayed({ doShoot(false) }, 50) else Log.i(CaptureController.TAG, "STRESS done")
+            }
+        }
+    }
+
+    /** NDK 경로: 캡처·메타·처리 전부 C++ (프레임이 Java를 거치지 않음) */
+    private fun doShootNdk() {
+        shutterAt = SystemClock.elapsedRealtime()
+        procHandler.post {
+            val w = cam.rawSize.width; val h = cam.rawSize.height
+            val out = ByteBuffer.allocateDirect(w * h * 4)
+            val json = Native.ndkShoot(out)
+            if (json.isEmpty()) { setStatus("ndk shoot failed"); return@post }
+            val jpg = saveJpeg(out, w, h)
+            val wall = SystemClock.elapsedRealtime() - shutterAt
+            val msg = "[ndk] shutter→jpeg ${wall}ms\njpeg: ${jpg.name}\n$json"
             Log.i(CaptureController.TAG, "RESULT $msg")
             setStatus(msg)
             if (stressLeft > 0) {
