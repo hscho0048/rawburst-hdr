@@ -1,0 +1,84 @@
+cmake_minimum_required(VERSION 3.22)
+project(burstpipe CXX)
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+set(CMAKE_CXX_FLAGS_RELEASE "-O2 -g")   # -g: simpleperf 심볼용, 속도 영향 없음
+
+# 앱에서 add_subdirectory로 포함될 때는 라이브러리만 빌드
+option(BURSTPIPE_EMU "센서 에뮬레이터(burstpipe_emu) 빌드" ${PROJECT_IS_TOP_LEVEL})
+option(BURSTPIPE_NO_NEON "NEON 디스패치 끄기 (기기 L0 scalar 측정용, NEON 함수는 test_neon_eq용으로 계속 빌드)" OFF)
+option(BURSTPIPE_TESTS "테스트 실행파일 빌드" ${PROJECT_IS_TOP_LEVEL})
+
+# 앱(android/app/src/main/cpp)이 add_subdirectory로 포함하므로 CMAKE_SOURCE_DIR 대신 이 디렉터리 기준
+set(BP_ROOT ${CMAKE_CURRENT_SOURCE_DIR})
+set(LITERT_DIR ${BP_ROOT}/third_party/litert)
+
+file(GLOB CORE_SRC CONFIGURE_DEPENDS ${BP_ROOT}/core/src/*.cc)
+if(ANDROID AND EXISTS ${LITERT_DIR}/lib/${ANDROID_ABI}/libtensorflowlite_jni.so)
+  set(BP_HAVE_LITERT ON)
+else()
+  list(FILTER CORE_SRC EXCLUDE REGEX "seg_litert\\.cc$")
+endif()
+
+add_library(bpcore STATIC ${CORE_SRC})
+target_include_directories(bpcore PUBLIC ${BP_ROOT}/core/include)
+find_package(Threads REQUIRED)
+target_link_libraries(bpcore PUBLIC Threads::Threads)
+
+if(BURSTPIPE_NO_NEON)
+  target_compile_definitions(bpcore PUBLIC BP_NO_NEON=1)
+endif()
+
+if(ANDROID)
+  target_compile_definitions(bpcore PUBLIC BP_ANDROID=1)
+  if(ANDROID_ABI STREQUAL "arm64-v8a")
+    target_compile_options(bpcore PUBLIC -march=armv8.2-a+fp16)
+  endif()
+  target_link_libraries(bpcore PUBLIC log android)
+  # LiteRT: third_party/litert 에 .so가 있을 때만 (scripts/fetch_litert.sh)
+  if(BP_HAVE_LITERT)
+    target_compile_definitions(bpcore PUBLIC BP_HAVE_LITERT=1)
+    target_include_directories(bpcore PUBLIC ${LITERT_DIR}/include)
+    target_link_libraries(bpcore PUBLIC
+      ${LITERT_DIR}/lib/${ANDROID_ABI}/libtensorflowlite_jni.so
+      ${LITERT_DIR}/lib/${ANDROID_ABI}/libtensorflowlite_gpu_jni.so)
+  endif()
+endif()
+
+if(PROJECT_IS_TOP_LEVEL)  # 앱 빌드에서는 cli 불필요
+  add_executable(burstpipe_cli ${BP_ROOT}/core/cli/main.cc)
+  target_link_libraries(burstpipe_cli bpcore)
+endif()
+
+# 센서 에뮬레이터: 기기 없이 Galaxy C55 RAW 버스트 덤프와 같은 형식을 만든다. core/는 이것을 모른다.
+if(BURSTPIPE_EMU)
+  add_library(bpemu STATIC ${BP_ROOT}/emu/sensor_emu.cc)
+  target_include_directories(bpemu PUBLIC ${BP_ROOT}/emu)
+  target_link_libraries(bpemu PUBLIC bpcore)
+  add_executable(burstpipe_emu ${BP_ROOT}/emu/main.cc)
+  target_link_libraries(burstpipe_emu bpemu)
+endif()
+
+if(NOT BURSTPIPE_TESTS)
+  return()
+endif()
+enable_testing()
+function(bp_test name)
+  add_executable(${name} ${BP_ROOT}/core/tests/${name}.cc)
+  target_link_libraries(${name} bpcore)
+  if(TARGET bpemu)
+    target_link_libraries(${name} bpemu)
+  endif()
+  add_test(NAME ${name} COMMAND ${name})
+endfunction()
+foreach(t test_align test_merge test_guided test_neon_eq test_finish test_threadpool)
+  if(EXISTS ${BP_ROOT}/core/tests/${t}.cc)
+    bp_test(${t})
+  endif()
+endforeach()
+if(BURSTPIPE_EMU)
+  bp_test(test_pipeline)
+endif()
