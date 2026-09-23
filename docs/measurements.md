@@ -202,6 +202,14 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 - 에뮬 정답 RGB(모자이크 전, 같은 CCM·톤) 대비 PSNR: bilinear 27.4 dB → **Malvar 29.3 dB (+1.8)**, RGGB·GBRG 동일 (`test_demosaic`).
 - C55 finish 비용: +12–60 ms (측정 편차 큼, 발열). 기본값 Malvar, `--demosaic bilinear`로 전환.
 
+### 5.6b 최종 앱 인물모드 (변환 모델, Malvar, 누적합 보케, 식힌 상태 ≤43°C·2.4 GHz에서 각 5연속)
+| 세그 | init | 셔터→JPEG | 처리 | 세그 추론 | disc_blur | composite |
+|---|---|---|---|---|---|---|
+| GPU (OpenCL) | 2.6 s | 1108–1230 ms | 445–523 ms | 14–24 ms | 24–26 ms | 34–36 ms |
+| **NPU (HTP)** | **1.0 s** | 1096–1211 ms | 437–550 ms | **4.6–11 ms** | 23–26 ms | 35–36 ms |
+
+세그는 두 경우 모두 합성 뒤에 숨어(seg_wait≈0) 셔터→JPEG 차이는 작고, NPU의 이점은 init(2.6 → 1.0 s)과 GPU를 비워 두는 것.
+
 ### 5.7 세그 모델 변환 — NPU 파티션 3 → 1
 - `tools/convert_selfie_model.py`: MediaPipe 커스텀 op `Convolution2DTransposeBias` → 표준 `TRANSPOSE_CONV` v3 (+output_shape 상수, bias 입력, SAME/stride 2). 모델 1개 노드.
 - 검증: 변환 모델 CPU 마스크 vs 원본(자체 커스텀 op 커널) **IoU 1.0000, |Δ| 0.0000** — 변환과 자체 커널 둘 다 표준 TRANSPOSE_CONV와 동일.
