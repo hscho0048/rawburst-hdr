@@ -5,6 +5,7 @@
 #include "burstpipe/bokeh.h"
 #include "burstpipe/burst.h"
 #include "burstpipe/finish.h"
+#include "burstpipe/gpu_blur.h"
 #include "burstpipe/merge.h"
 #include "burstpipe/seg.h"
 #include "burstpipe/thread_pool.h"
@@ -16,6 +17,7 @@ struct PipelineParams {
   AlignParams align; MergeParams merge; FinishParams finish; BokehParams bokeh;
   int threads = 4; std::vector<int> cpus; int consider_ref = 3;
   int seg_cpu = -1;  // ≥0이면 세그 스레드를 이 코어에 고정 (big 코어 경쟁 회피 실험용)
+  bool gpu_blur = false;  // 보케 디스크 블러를 Vulkan compute로 (Android만, 실패 시 CPU)
 };
 
 struct PipelineOutput {
@@ -40,6 +42,7 @@ class Pipeline {
   size_t scratch_capacity() const { return scratch_.capacity(); }
   size_t scratch_peak() const { return scratch_.peak(); }
   size_t persistent_capacity() const { return persistent_.capacity(); }
+  const std::string& gpu_status() const { return gpu_status_; }
  private:
   int w_, h_, max_frames_;
   PipelineParams p_;
@@ -47,6 +50,8 @@ class Pipeline {
   Arena persistent_, scratch_;
   Image<float> rgb_lin_q_, alpha_;
   std::vector<float> rgb256_, mask_buf_;
+  std::unique_ptr<GpuBlur> gpu_;
+  std::string gpu_status_ = "off";
   PipelineOutput out_;
 };
 

@@ -14,7 +14,7 @@ static const char* kUsage =
     "burstpipe_cli --in DIR --out out.ppm [--mask mask.bin] [--frames N] [--threads T] [--cpus 4,5,6,7]\n"
     "              [--json timings.json] [--dump-merged merged.raw16] [--dump-weights w.pgm] [--dump-alpha a.pgm]\n"
     "              [--ev 2.8] [--radius 12] [--k 2.5] [--repeat R]\n"
-    "              [--seg-model PATH --delegate cpu|gpu|npu|emu] [--seg-emu-latency MS] [--seg-cpu C]\n"
+    "              [--seg-model PATH --delegate cpu|gpu|npu|emu] [--seg-emu-latency MS] [--seg-cpu C] [--gpu-blur]\n"
     "  --delegate emu: --seg-model 자리에 256x256 float 마스크(mask_emu.bin)를 받는 에뮬레이션 세그멘터\n";
 
 static std::vector<int> parse_ints(const std::string& s) {
@@ -67,6 +67,7 @@ int main(int argc, char** argv) {
     else if (!std::strcmp(argv[i], "--seg-model")) seg_model = next();
     else if (!std::strcmp(argv[i], "--seg-emu-latency")) seg_emu_latency = std::atof(next().c_str());
     else if (!std::strcmp(argv[i], "--seg-cpu")) p.seg_cpu = std::atoi(next().c_str());
+    else if (!std::strcmp(argv[i], "--gpu-blur")) p.gpu_blur = true;
     else if (!std::strcmp(argv[i], "--delegate")) {
       have_delegate = bp::parse_delegate(next(), del);
       if (!have_delegate) { std::fputs(kUsage, stderr); return 2; }
@@ -90,6 +91,7 @@ int main(int argc, char** argv) {
   }
 
   bp::Pipeline pipe(meta.width, meta.height, n, p);
+  if (p.gpu_blur) std::printf("gpu blur: %s\n", pipe.gpu_status().c_str());
 
   std::unique_ptr<bp::Segmenter> seg;
   if (!seg_model.empty()) {
@@ -113,8 +115,8 @@ int main(int argc, char** argv) {
   std::printf("%dx%d frames=%d ref=%d threads=%d mean_weight=%.3f bokeh=%d scratch=%zu/%zuMB persistent=%zuMB\n",
               meta.width, meta.height, n, o->ref, p.threads, o->merge_stats.mean_weight, (int)o->bokeh,
               pipe.scratch_peak() >> 20, pipe.scratch_capacity() >> 20, pipe.persistent_capacity() >> 20);
-  for (auto& s : t.ms) std::printf("  %-18s %8.1f ms\n", s.first.c_str(), s.second);
-  std::printf("  %-18s %8.1f ms\n", "total", t.total());
+  for (auto& s : t.ms) std::printf("  %-22s %8.1f ms\n", s.first.c_str(), s.second);
+  std::printf("  %-22s %8.1f ms\n", "total", t.total());
   if (!bp::write_ppm8(out, o->rgba)) { std::printf("write %s failed\n", out.c_str()); return 1; }
   if (!dump_merged.empty()) bp::write_raw16(dump_merged, o->merged);
   if (!dump_weights.empty() && !o->merge_weights.empty())

@@ -83,7 +83,54 @@ void highlight_boost(Image<float>& rgb, float gain, float strength) {
 }
 
 // 원형 커널(렌즈 보케) + (1−α) 가중 정규화: 전경색이 배경 블러로 번지는 헤일로를 막는다.
-void disc_blur_normalized(const Image<float>& rgb, const Image<float>& alpha, int radius, ThreadPool& pool, Image<float>& out) {
+void disc_blur_normalized(const Image<float>& rgb, const Image<float>& alpha, int radius, ThreadPool& pool, Arena& scratch,
+                          Image<float>& out) {
+  const int w = rgb.w / 3, h = rgb.h, W1 = w + 1;
+  // 1) 행별 누적합 P[y][x] = Σ_{x'<x} (w·r, w·g, w·b, w),  w = 1−α
+  Image<float> P = scratch.alloc<float>(W1 * 4, h);
+  pool.parallel_for(h, [&](int y) {
+    const float* s = rgb.row(y); const float* a = alpha.row(y); float* p = P.row(y);
+    float cr = 0, cg = 0, cb = 0, cw = 0;
+    p[0] = p[1] = p[2] = p[3] = 0;
+    for (int x = 0; x < w; ++x) {
+      const float wt = 1.f - a[x];
+      cr += wt * s[3 * x]; cg += wt * s[3 * x + 1]; cb += wt * s[3 * x + 2]; cw += wt;
+      float* q = p + 4 * (x + 1); q[0] = cr; q[1] = cg; q[2] = cb; q[3] = cw;
+    }
+  });
+  std::vector<int> span(2 * radius + 1);
+  for (int dy = -radius; dy <= radius; ++dy) span[dy + radius] = (int)std::floor(std::sqrt((float)(radius * radius - dy * dy)));
+  // 2) 픽셀마다 원 = 행 구간 [x−sx, x+sx] 합. 이미지 밖 열은 가장자리 값 복제 (직접 합산 구현과 같은 규칙)
+  pool.parallel_for(h, [&](int y) {
+    float* o = out.row(y);
+    const float* c0 = rgb.row(y);
+    for (int x = 0; x < w; ++x) {
+      const float* c = c0 + 3 * x;
+      if (alpha.at(x, y) > 0.98f) { o[3 * x] = c[0]; o[3 * x + 1] = c[1]; o[3 * x + 2] = c[2]; continue; }
+      float sr = 0, sg = 0, sb = 0, sw = 0;
+      for (int dy = -radius; dy <= radius; ++dy) {
+        const int yy = std::min(h - 1, std::max(0, y + dy));
+        const int sx = span[dy + radius];
+        const float* p = P.row(yy);
+        const int xa = std::max(0, x - sx), xb = std::min(w - 1, x + sx);
+        const float* pa = p + 4 * xa; const float* pb = p + 4 * (xb + 1);
+        sr += pb[0] - pa[0]; sg += pb[1] - pa[1]; sb += pb[2] - pa[2]; sw += pb[3] - pa[3];
+        const int nl = xa - (x - sx), nr = (x + sx) - xb;  // 복제되는 바깥 탭 수
+        if (nl > 0) {
+          const float* e = p + 4; sr += nl * e[0]; sg += nl * e[1]; sb += nl * e[2]; sw += nl * e[3];
+        }
+        if (nr > 0) {
+          const float* e1 = p + 4 * w; const float* e0 = p + 4 * (w - 1);
+          sr += nr * (e1[0] - e0[0]); sg += nr * (e1[1] - e0[1]); sb += nr * (e1[2] - e0[2]); sw += nr * (e1[3] - e0[3]);
+        }
+      }
+      if (sw < 1e-3f) { o[3 * x] = c[0]; o[3 * x + 1] = c[1]; o[3 * x + 2] = c[2]; }
+      else { float inv = 1.f / sw; o[3 * x] = sr * inv; o[3 * x + 1] = sg * inv; o[3 * x + 2] = sb * inv; }
+    }
+  });
+}
+
+void disc_blur_direct(const Image<float>& rgb, const Image<float>& alpha, int radius, ThreadPool& pool, Image<float>& out) {
   // 행별 [dx0, dx1] 스팬으로 표현 → 내부 픽셀은 행 포인터 + 연속 접근
   std::vector<int> span(2 * radius + 1);
   for (int dy = -radius; dy <= radius; ++dy) span[dy + radius] = (int)std::floor(std::sqrt((float)(radius * radius - dy * dy)));
@@ -120,20 +167,37 @@ void disc_blur_normalized(const Image<float>& rgb, const Image<float>& alpha, in
   });
 }
 
+// 출력 행마다: 1/4 해상도 α·블러의 두 행을 세로 보간해 행 버퍼(QW)로 만든 뒤, 열 테이블로 가로 보간.
+// (픽셀마다 좌표·가중치를 다시 계산하고 채널마다 std::lround를 부르던 버전: C55에서 72–80 ms)
 void composite(const Image<uint8_t>& sharp, const Image<uint8_t>& blur_q, const Image<float>& alpha_q, ThreadPool& pool, Image<uint8_t>& out) {
   const int W = sharp.w / 4, H = sharp.h, QW = alpha_q.w, QH = alpha_q.h;
   const float sx = (float)QW / W, sy = (float)QH / H;
+  std::vector<int> cx0(W), cx1(W);
+  std::vector<float> cwx(W);
+  for (int x = 0; x < W; ++x) {
+    const float fx = std::max(0.f, (x + 0.5f) * sx - 0.5f);
+    cx0[x] = std::min((int)fx, QW - 1); cx1[x] = std::min(cx0[x] + 1, QW - 1); cwx[x] = fx - cx0[x];
+  }
   pool.parallel_for(H, [&](int y) {
-    float fy = std::max(0.f, (y + 0.5f) * sy - 0.5f); int y0 = std::min((int)fy, QH - 1), y1 = std::min(y0 + 1, QH - 1); float wy = fy - y0;
+    thread_local std::vector<float> ra, rb;  // 세로 보간된 α 행, 블러 행(RGB)
+    if ((int)ra.size() < QW) { ra.resize(QW); rb.resize((size_t)QW * 3); }
+    const float fy = std::max(0.f, (y + 0.5f) * sy - 0.5f);
+    const int y0 = std::min((int)fy, QH - 1), y1 = std::min(y0 + 1, QH - 1);
+    const float wy = fy - y0;
+    const float* a0 = alpha_q.row(y0); const float* a1 = alpha_q.row(y1);
+    const uint8_t* b0 = blur_q.row(y0); const uint8_t* b1 = blur_q.row(y1);
+    for (int q = 0; q < QW; ++q) {
+      ra[q] = a0[q] + wy * (a1[q] - a0[q]);
+      for (int c = 0; c < 3; ++c) rb[3 * q + c] = b0[4 * q + c] + wy * ((float)b1[4 * q + c] - b0[4 * q + c]);
+    }
     const uint8_t* s = sharp.row(y); uint8_t* o = out.row(y);
     for (int x = 0; x < W; ++x) {
-      float fx = std::max(0.f, (x + 0.5f) * sx - 0.5f); int x0 = std::min((int)fx, QW - 1), x1 = std::min(x0 + 1, QW - 1); float wx = fx - x0;
-      float w00 = (1 - wy) * (1 - wx), w01 = (1 - wy) * wx, w10 = wy * (1 - wx), w11 = wy * wx;
-      float a = w00 * alpha_q.at(x0, y0) + w01 * alpha_q.at(x1, y0) + w10 * alpha_q.at(x0, y1) + w11 * alpha_q.at(x1, y1);
+      const int q0 = cx0[x], q1 = cx1[x]; const float wx = cwx[x];
+      float a = ra[q0] + wx * (ra[q1] - ra[q0]);
       a = std::min(1.f, std::max(0.f, a));
       for (int c = 0; c < 3; ++c) {
-        float bl = w00 * blur_q.at(4 * x0 + c, y0) + w01 * blur_q.at(4 * x1 + c, y0) + w10 * blur_q.at(4 * x0 + c, y1) + w11 * blur_q.at(4 * x1 + c, y1);
-        o[4 * x + c] = (uint8_t)std::lround(a * s[4 * x + c] + (1 - a) * bl);
+        const float bl = rb[3 * q0 + c] + wx * (rb[3 * q1 + c] - rb[3 * q0 + c]);
+        o[4 * x + c] = (uint8_t)(a * s[4 * x + c] + (1 - a) * bl + 0.5f);  // 값 ≥ 0 → +0.5 절삭 = 반올림
       }
       o[4 * x + 3] = 255;
     }

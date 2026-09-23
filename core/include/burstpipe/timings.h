@@ -12,11 +12,14 @@ namespace bp {
 struct Timings {
   std::vector<std::pair<std::string, double>> ms;  // 기록 순서 유지
   void add(const std::string& name, double v) { ms.emplace_back(name, v); }
-  // 임계 경로 합. 병렬 스레드에서 잰 값("*_parallel")은 wall time에 포함되지 않으므로 뺀다.
+  // 임계 경로 합. 병렬 스레드에서 잰 값("*_parallel")과 stage 내부 세부("stage.part")는 이미 다른 항목에 포함되므로 뺀다.
+  static bool counted(const std::string& k) {
+    if (k.find('.') != std::string::npos) return false;
+    return k.size() < 9 || k.compare(k.size() - 9, 9, "_parallel") != 0;
+  }
   double total() const {
     double s = 0;
-    for (auto& p : ms)
-      if (p.first.size() < 9 || p.first.compare(p.first.size() - 9, 9, "_parallel") != 0) s += p.second;
+    for (auto& p : ms) if (counted(p.first)) s += p.second;
     return s;
   }
   std::string json() const {

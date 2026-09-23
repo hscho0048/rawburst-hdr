@@ -42,9 +42,29 @@ int main() {
       for (int c = 0; c < 3; ++c) rgb.img.at(3 * x + c, y) = fg ? 1.f : 0.1f;
     }
   bp::ThreadPool pool(2);
-  bp::disc_blur_normalized(rgb.img, alpha.img, 6, pool, out.img);
+  bp::Arena bs(4 << 20);
+  bp::disc_blur_normalized(rgb.img, alpha.img, 6, pool, bs, out.img);
   std::printf("halo: bg next to fg = %.3f (should stay 0.1)\n", out.img.at(3 * (W / 2), H / 2));
   assert(std::fabs(out.img.at(3 * (W / 2), H / 2) - 0.1f) < 1e-4f);
+  // 누적합 구현 == 직접 합산 참조 (랜덤 α·색, 경계 포함, 반지름 여러 개)
+  {
+    std::srand(9);
+    for (int y = 0; y < H; ++y)
+      for (int x = 0; x < W; ++x) {
+        alpha.img.at(x, y) = (std::rand() % 3 == 0) ? 1.f : (std::rand() % 1000) / 1000.f * 0.97f;
+        for (int c = 0; c < 3; ++c) rgb.img.at(3 * x + c, y) = (std::rand() % 1000) / 250.f;
+      }
+    bp::Buffer<float> ref(W * 3, H);
+    for (int r : {1, 5, 12, 20}) {
+      bs.reset();
+      bp::disc_blur_normalized(rgb.img, alpha.img, r, pool, bs, out.img);
+      bp::disc_blur_direct(rgb.img, alpha.img, r, pool, ref.img);
+      float me = 0;
+      for (size_t i = 0; i < ref.v.size(); ++i) me = std::max(me, std::fabs(out.v[i] - ref.v[i]));
+      std::printf("disc blur prefix vs direct r=%d: max|diff|=%g\n", r, me);
+      assert(me < 2e-3f);
+    }
+  }
   std::puts("test_guided OK");
   return 0;
 }

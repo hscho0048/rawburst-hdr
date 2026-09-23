@@ -10,5 +10,5 @@ for _, d in rows:
 print("| 설정 | " + " | ".join(keys) + " | total |")
 print("|---" * (len(keys) + 2) + "|")
 for name, d in rows:
-    tot = sum(v for k, v in d.items() if not k.endswith("_parallel"))
+    tot = sum(v for k, v in d.items() if not k.endswith("_parallel") and "." not in k)
     print(f"| {name} | " + " | ".join(f"{d[k]:.1f}" if k in d else "" for k in keys) + f" | {tot:.1f} |")

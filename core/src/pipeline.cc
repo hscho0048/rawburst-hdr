@@ -16,7 +16,7 @@ static size_t scratch_bytes(int w, int h, int n) {
   size_t align = (size_t)n * (wh / 4) * 2 * 4 / 3 + (size_t)n * 64 * 8 + (1 << 20);  // gray 피라미드 (등비합 4/3)
   size_t merge = wh * 8;                                          // num + den
   size_t finish = wh * 4;                                         // lin
-  size_t bokeh = (size_t)(w / 4) * (h / 4) * 4 * 14;              // alpha0, guide + guided 7장 + blur 3ch + blur_rgba
+  size_t bokeh = (size_t)(w / 4 + 1) * (h / 4) * 4 * 18;          // alpha0, guide + guided 7장 + blur 3ch + blur_rgba + 누적합 4ch
   return std::max({align, merge, finish, bokeh}) + (8 << 20);
 }
 
@@ -29,6 +29,11 @@ Pipeline::Pipeline(int w, int h, int max_frames, const PipelineParams& p)
   alpha_ = persistent_.alloc<float>(w / 4, h / 4);
   rgb256_.resize(256 * 256 * 3);
   mask_buf_.resize(256 * 256);
+  if (p.gpu_blur) {
+    std::string why;
+    gpu_ = GpuBlur::create(w / 4, h / 4, &why);
+    gpu_status_ = gpu_ ? "vulkan " + gpu_->device_name() : "unavailable (" + why + ")";
+  }
 }
 
 const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmenter* seg, Timings& t) {
@@ -119,7 +124,15 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
     {
       BP_STAGE(t, "disc_blur");
       highlight_boost(rgb_lin_q_, p_.finish.ev_gain, p_.bokeh.highlight);
-      disc_blur_normalized(rgb_lin_q_, alpha, p_.bokeh.radius, pool_, blur);
+      GpuBlurTimes gt;
+      if (gpu_ && p_.bokeh.radius <= GpuBlur::kMaxRadius && gpu_->run(rgb_lin_q_, alpha, p_.bokeh.radius, blur, &gt)) {
+        t.add("disc_blur.upload", gt.upload_ms);
+        t.add("disc_blur.gpu_submit_wait", gt.submit_wait_ms);
+        if (gt.kernel_ms >= 0) t.add("disc_blur.gpu_kernel", gt.kernel_ms);
+        t.add("disc_blur.download", gt.download_ms);
+      } else {
+        disc_blur_normalized(rgb_lin_q_, alpha, p_.bokeh.radius, pool_, scratch_, blur);
+      }
     }
     {
       BP_STAGE(t, "composite");

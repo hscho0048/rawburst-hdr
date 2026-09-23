@@ -1,0 +1,43 @@
+#version 450
+// (1−α) 가중 정규화 디스크 블러 — core/src/bokeh.cc disc_blur_normalized()의 GPU 버전 (설계문서 부록 A, L5).
+// 16×16 워크그룹이 (16+2R)² 타일을 공유 메모리에 (w·r, w·g, w·b, w) 로 올린다 (w = 1−α).
+// 그러면 원형 커널 합 하나로 분자·분모가 같이 나온다. R ≤ MAXR (공유 메모리 40×40×16B = 25.6KB).
+layout(local_size_x = 16, local_size_y = 16) in;
+layout(std430, binding = 0) readonly buffer Rgb { float rgb[]; };
+layout(std430, binding = 1) readonly buffer Alpha { float alpha[]; };
+layout(std430, binding = 2) writeonly buffer Out { float outv[]; };
+layout(push_constant) uniform P { int w; int h; int r; } pc;
+
+const int MAXR = 12;
+const int TS = 16 + 2 * MAXR;
+shared vec4 tile[TS * TS];
+
+void main() {
+  const ivec2 g0 = ivec2(gl_WorkGroupID.xy) * 16 - ivec2(MAXR);
+  const int lid = int(gl_LocalInvocationIndex);
+  for (int i = lid; i < TS * TS; i += 256) {
+    ivec2 p = clamp(g0 + ivec2(i % TS, i / TS), ivec2(0), ivec2(pc.w - 1, pc.h - 1));
+    int k = p.y * pc.w + p.x;
+    float wt = 1.0 - alpha[k];
+    tile[i] = vec4(rgb[3 * k] * wt, rgb[3 * k + 1] * wt, rgb[3 * k + 2] * wt, wt);
+  }
+  barrier();
+
+  const ivec2 gp = ivec2(gl_GlobalInvocationID.xy);
+  if (gp.x >= pc.w || gp.y >= pc.h) return;
+  const int k = gp.y * pc.w + gp.x;
+  const vec3 c = vec3(rgb[3 * k], rgb[3 * k + 1], rgb[3 * k + 2]);
+  vec3 o = c;
+  if (alpha[k] <= 0.98) {  // 전경은 composite에서 α·sharp → 계산 생략 (CPU와 동일)
+    const ivec2 lp = ivec2(gl_LocalInvocationID.xy) + ivec2(MAXR);
+    const int r2 = pc.r * pc.r;
+    vec4 s = vec4(0.0);
+    for (int dy = -pc.r; dy <= pc.r; ++dy) {
+      const int sx = int(floor(sqrt(float(r2 - dy * dy))));
+      const int row = (lp.y + dy) * TS + lp.x;
+      for (int dx = -sx; dx <= sx; ++dx) s += tile[row + dx];
+    }
+    if (s.w >= 1e-3) o = s.xyz / s.w;
+  }
+  outv[3 * k] = o.x; outv[3 * k + 1] = o.y; outv[3 * k + 2] = o.z;
+}
