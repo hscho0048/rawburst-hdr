@@ -113,8 +113,8 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 
 - 8장 이론 9.03 dB. 정적 핸드헬드 8.1 dB = 이론의 90%. 저조도가 이론을 넘는 것은 PC-emu와 같은 원인(평탄부 모션 노이즈에 의한 약한 공간 평활).
 - `snr_auto.py` 검증: 에뮬 정적 세트에서 9.65 dB vs 정답 영역 기반 `snr.py` 9.60 dB.
-- 움직임(#4): 참조 선택이 가장 선명한 프레임(2)을 골라 손이 단일 frame 0보다 선명. 손 궤적은 가중치 0(검정) → 다중 손 고스트 없음. 거부 영역은 단일 프레임 노이즈(색 노이즈)가 남음 — HDR+ 공간 합성의 한계, 주파수 합성(v2)이 다룬다. `docs/img/c55_motion.jpg`
-- 색: ForwardMatrix CCM으로 흰 벽·피부가 자연스러움 (결과 CCM 단위행렬 그대로면 채도 저하). `docs/img/c55_portrait_highlight.jpg`
+- 움직임(#4): 참조 선택이 가장 선명한 프레임(2)을 골라 손이 단일 frame 0보다 선명. 손 궤적은 가중치 0(검정) → 다중 손 고스트 없음. 거부 영역은 단일 프레임 노이즈(색 노이즈)가 남음 — HDR+ 공간 합성의 한계, 주파수 합성(v2)이 다룬다.
+- 색: ForwardMatrix CCM으로 흰 벽·피부가 자연스러움 (결과 CCM 단위행렬 그대로면 채도 저하).
 - RAW가 매우 어둡다 (중앙값 블랙+15 DN): EV −1.5 + 실내. 저신호 구간은 읽기 노이즈 지배.
 
 ### 세그멘테이션 LiteRT 2.16.1 (MediaPipe selfie_segmenter float16, 인물 덤프 #5)
@@ -129,7 +129,7 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 
 - 앱 셔터→JPEG (인물모드, 보케 포함, 연속 5회): **1238–1316 ms** (캡처 ~490 + 처리 ~610 + JPEG ~150)
 - 커스텀 op 검증: 자체 CPU 구현 마스크 vs GPU 델리게이트 내장 구현 마스크 **IoU 0.998**, 평균 |Δα| 0.001
-- 방향 수정 전/후 (같은 버스트): 전경 비율 2.9% → **15.2%** (전신). `docs/img/c55_portrait_bokeh.jpg` (합성 | 정제 마스크 | 보케)
+- 방향 수정 전/후 (같은 버스트): 전경 비율 2.9% → **15.2%** (전신).
 
 실기기에서 찾은 통합 버그 3개
 1. **커스텀 op**: selfie_segmenter는 `Convolution2DTransposeBias`(MediaPipe 전용)를 써서 표준 TFLite가 로드 실패 → C API `TfLiteInterpreterOptionsAddCustomOp`로 전치 합성곱 + bias 커널 등록.
@@ -234,7 +234,7 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 
 ### 5.9 Mertens 로컬 톤매핑 — `--ltm`
 - 1/4 해상도 휘도에서 합성 노출 2장(×1, ×4) → well-exposedness(σ=0.2) 가중 Laplacian 피라미드 융합 → 픽셀당 선형 게인(1–4) → 풀해상도 쌍선형 적용. 보케용 1/4 영상에도 같은 게인.
-- 실사(저조도 방·역광 패널·책상): 암부가 올라오고 하이라이트 유지 (`docs/img/c55_ltm.jpg`). 패널 주변 약한 헤일로. PC +45–56 ms. 옵트인.
+- 실사(저조도 방·역광 패널·책상): 암부가 올라오고 하이라이트 유지. 패널 주변 약한 헤일로. PC +45–56 ms. 옵트인.
 
 ### 5.10 Camera2 NDK 포팅 — `--es capture ndk`
 - `android/ndk_camera.cc`: ACameraManager/AImageReader(RAW16, N+2)/수동 노출 버스트/결과 메타(타임스탬프 매칭, WB·CCM·노이즈·동적 블랙, ForwardMatrix CCM·orientation)를 C++에서. 프레임은 `AImage` 평면 → 네이티브 슬롯 1회 복사, Java 경유 없음.

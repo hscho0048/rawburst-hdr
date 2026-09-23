@@ -33,12 +33,6 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
 
-![C55 인물](docs/img/c55_portrait_bokeh.jpg)
-*[C55] 인물: 8장 합성 | 세그 마스크(GPU, 가이디드 필터 정제) | 보케*
-
-![C55 움직임](docs/img/c55_motion.jpg)
-*[C55] 손 흔들기: 단일 frame 0 | 8장 합성(가장 선명한 프레임 참조, 고스트 없음) | 합성 가중치*
-
 ![C55 저조도](docs/img/c55_lowlight_crop.jpg)
 *[C55] ISO 6400 1/30s 크롭: 단일 | 8장 합성*
 
