@@ -60,6 +60,25 @@ int main() {
     for (int x = 0; x < W - 32; ++x) bad += merged.img.at(x, y) != bufs[0].img.at(x, y);
   std::printf("shifted: mismatches=%d mean_weight=%.3f\n", bad, st.mean_weight);
   assert(bad == 0);
+  // 5) 주파수 영역(Wiener) 합성: 동일 프레임 → 원본 ±1, 전혀 다른 프레임은 거부(참조 유지)
+  {
+    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) for (int i = 0; i < N; ++i) bufs[i].img.at(x, y) = bufs[0].img.at(x, y);
+    for (int i = 1; i < N; ++i) for (size_t k = 0; k < fields[i].dx.size(); ++k) { fields[i].dx[k] = fields[i].dy[k] = 0; fields[i].err[k] = 0; }
+    bp::MergeParams wp; wp.mode = bp::MergeMode::kWiener;
+    scratch.reset();
+    bp::merge_burst_wiener(b, 0, fields, wp, pool, scratch, merged.img);
+    int bad = 0;
+    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) bad += std::abs((int)merged.img.at(x, y) - (int)bufs[0].img.at(x, y)) > 1;
+    std::printf("wiener identical: mismatches(>1)=%d\n", bad);
+    assert(bad == 0);
+    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) bufs[2].img.at(x, y) = 4000;
+    scratch.reset();
+    bp::merge_burst_wiener(b, 0, fields, wp, pool, scratch, merged.img);
+    double e = 0;
+    for (int y = 0; y < H; ++y) for (int x = 0; x < W; ++x) e += std::abs((int)merged.img.at(x, y) - (int)bufs[0].img.at(x, y));
+    std::printf("wiener outlier frame: mean |diff| vs ref = %.3f\n", e / (W * H));
+    assert(e / (W * H) < 2.0);
+  }
   // 4) 엉터리 노이즈 프로파일(a=1)은 무시 → 정렬 오차 기반 추정으로 대체
   {
     bp::BurstMeta m; m.noise_a = 1.0f; m.noise_b = 1e-6f;

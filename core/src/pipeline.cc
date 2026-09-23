@@ -86,7 +86,9 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
       out_.merge_stats = MergeStats{};
       out_.merge_weights.clear();
     } else {
-      out_.merge_stats = merge_burst(bb, ref, fields, p_.merge, pool_, scratch_, out_.merged, &out_.merge_weights);
+      out_.merge_stats = p_.merge.mode == MergeMode::kWiener
+                             ? merge_burst_wiener(bb, ref, fields, p_.merge, pool_, scratch_, out_.merged, &out_.merge_weights)
+                             : merge_burst(bb, ref, fields, p_.merge, pool_, scratch_, out_.merged, &out_.merge_weights);
     }
     const int S = p_.merge.tile / 2;
     out_.weights_w = N == 1 ? 0 : (w_ + S - 1) / S;
