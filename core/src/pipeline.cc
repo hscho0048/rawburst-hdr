@@ -42,7 +42,7 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
   scratch_.reset();
 
   // 0) 세그멘테이션: 입력이 frame 0 RAW 축소본이라 정렬·합성을 기다릴 필요가 없다 → 임계 경로 밖
-  double seg_ms = 0;
+  double seg_ms = 0, seg_prep_ms = 0;
   bool seg_ok = false;
   std::thread seg_thread;
   if (!mask256 && seg) {
@@ -50,9 +50,11 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
       if (p_.seg_cpu >= 0) pin_current_thread(p_.seg_cpu);
       auto t0 = std::chrono::steady_clock::now();
       bayer_to_rgb256(b.frames[0], b.meta, p_.finish.ev_gain, rgb256_.data());
+      auto t1 = std::chrono::steady_clock::now();
+      seg_prep_ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
       seg_ok = seg->run(rgb256_.data(), mask_buf_.data());
       if (seg_ok) mask256_to_sensor(mask_buf_.data(), b.meta.orientation);  // 정립 좌표 → 센서 좌표
-      seg_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+      seg_ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t1).count();
     });
   }
 
@@ -101,6 +103,7 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
       BP_STAGE(t, "seg_wait");
       seg_thread.join();
     }
+    t.add("seg_prep_parallel", seg_prep_ms);
     t.add("seg_infer_parallel", seg_ms);
     if (seg_ok) mask256 = mask_buf_.data();
   }

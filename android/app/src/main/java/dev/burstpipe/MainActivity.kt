@@ -117,11 +117,14 @@ class MainActivity : Activity(), CaptureController.Listener {
         if (nativeReady || cam.rawSize.width == 0) return
         procHandler.post {
             // 세그 모델이 assets에 있으면 사용 (LiteRT 포함 빌드에서만 성공). 없으면 보케 생략.
-            val model = runCatching {
-                File(filesDir, "selfie_segmenter.tflite").also { f ->
-                    if (!f.exists()) assets.open("selfie_segmenter.tflite").use { src -> f.outputStream().use { src.copyTo(it) } }
-                }.absolutePath
-            }.getOrNull()
+            // _std = 커스텀 op를 표준 TRANSPOSE_CONV로 바꾼 모델 (tools/convert_selfie_model.py): NPU가 그래프 전체를 가져간다
+            val model = listOf("selfie_segmenter_std.tflite", "selfie_segmenter.tflite").firstNotNullOfOrNull { name ->
+                runCatching {
+                    File(filesDir, name).also { f ->
+                        if (!f.exists()) assets.open(name).use { src -> f.outputStream().use { src.copyTo(it) } }
+                    }.absolutePath
+                }.getOrNull()
+            }
             // 델리게이트: 인텐트 --es delegate gpu|npu|cpu (기본 gpu). NPU는 skel을 nativeLibraryDir에서 찾게 한다
             val delegate = when (intent?.getStringExtra("delegate")) { "npu" -> 2; "cpu" -> 0; else -> 1 }
             if (delegate == 2) android.system.Os.setenv("ADSP_LIBRARY_PATH", applicationInfo.nativeLibraryDir + ";/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp", true)

@@ -14,6 +14,8 @@ unzip -o -q $T/tfl.aar -d $T/h1 && cp -r $T/h1/headers/. third_party/litert/incl
 unzip -o -q $T/gpu.aar -d $T/h2 && [ -d $T/h2/headers ] && cp -r $T/h2/headers/. third_party/litert/include/ || true
 [ -f models/selfie_segmenter.tflite ] || curl -L -o models/selfie_segmenter.tflite \
   https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite
+# 커스텀 op → 표준 TRANSPOSE_CONV 변환 모델 (tensorflow 파이썬이 있으면). NPU 파티션 3 → 1
+python3 tools/convert_selfie_model.py models/selfie_segmenter.tflite models/selfie_segmenter_std.tflite 2>/dev/null   || python tools/convert_selfie_model.py models/selfie_segmenter.tflite models/selfie_segmenter_std.tflite   || echo "변환 생략 (tensorflow 없음): 원본 모델 + 자체 커스텀 op 커널로도 동작"
 ls -la third_party/litert/lib/arm64-v8a models
 test -f third_party/litert/include/tensorflow/lite/c/c_api.h && echo "headers OK" || echo "헤더 없음: 개발문서 Task 11 Step 1의 대체 방법 참고"
 

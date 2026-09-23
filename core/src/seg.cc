@@ -29,6 +29,18 @@ bool parse_delegate(const std::string& s, Delegate& d) {
   return true;
 }
 
+// x^(1/2.2) on [0,1] — 픽셀마다 std::pow를 부르지 않도록 4096 LUT (모델 입력 정밀도로 충분)
+static float gamma_lut(float x) {
+  static const std::vector<float> lut = [] {
+    std::vector<float> t(4097);
+    for (int i = 0; i <= 4096; ++i) t[i] = std::pow(i / 4096.f, 1.f / 2.2f);
+    return t;
+  }();
+  const float f = std::min(1.f, std::max(0.f, x)) * 4096.f;
+  const int i = std::min(4095, (int)f);
+  return lut[i] + (f - i) * (lut[i + 1] - lut[i]);
+}
+
 void bayer_to_rgb256(const Image<uint16_t>& b, const BurstMeta& m, float ev_gain, float* out) {
   const int SW = b.w / 2, SH = b.h / 2;  // 슈퍼픽셀 격자
   for (int j = 0; j < 256; ++j) {
@@ -44,7 +56,7 @@ void bayer_to_rgb256(const Image<uint16_t>& b, const BurstMeta& m, float ev_gain
         }
       float rgb[3] = {ch[0], 0.5f * (ch[1] + ch[2]), ch[3]};
       float* o = out + (j * 256 + i) * 3;
-      for (int c = 0; c < 3; ++c) o[c] = std::pow(std::min(1.f, rgb[c] * ev_gain), 1.f / 2.2f);
+      for (int c = 0; c < 3; ++c) o[c] = gamma_lut(rgb[c] * ev_gain);
     }
   }
   const int deg = ((m.orientation % 360) + 360) % 360;
