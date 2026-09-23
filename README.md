@@ -1,7 +1,7 @@
 # burstpipe
 
 RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘테이션 인물모드 파이프라인. C++17, camera HAL 아래 계층.
-대상 기기 Galaxy C55 (Snapdragon 7 Gen 1). **현재 단계: 에뮬레이션으로 완성, 실기기 측정 전** — 아래 모든 숫자는 출처가 표시돼 있다.
+대상 기기 Galaxy C55 (Snapdragon 7 Gen 1). **현재 단계: 에뮬레이션 완성 + Galaxy C55 실측 (세그 LiteRT 제외)** — 아래 모든 숫자는 출처가 표시돼 있다.
 
 ![단일 프레임 | 8장 합성 | 합성+보케](docs/img/compare_portrait.jpg)
 *[PC-emu] 센서 에뮬레이터 인물 세트 4080×3060 × 8장. 단일 프레임 | 8장 합성 | 합성 + 세그 마스크 보케*
@@ -17,9 +17,18 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 | 스레드 스케일링 (x64) | 1→4스레드 2.9배, 1→8 5.0배 | PC-emu |
 | NEON vs scalar | 전체 파이프라인 출력 bit-exact | AVD arm64 |
 | Camera2 RAW 버스트 → JNI → JPEG | 동작 (드롭 0, 타임스탬프 매칭 8/8) | AVD |
-| Galaxy C55 단계별 ms, 셔터→JPEG, 델리게이트 비교 | — | **[docs/hardware_test.md](docs/hardware_test.md)** |
+| 12MP×8 합성 (NEON, big 4코어) | **295 ms** (scalar 1스레드 1425 ms) | **C55** |
+| 앱 셔터→JPEG (연속 5회) | **1.04–1.14 s** | **C55** |
+| SNR 이득, 실제 장면 | 정적 핸드헬드 **8.1 dB**, ISO 6400 **9.9 dB** | **C55** |
+| 세그 LiteRT CPU vs GPU | — (다운로드 대기) | [hardware_test.md](docs/hardware_test.md) 6 |
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
+
+![C55 움직임](docs/img/c55_motion.jpg)
+*[C55] 손 흔들기: 단일 frame 0 | 8장 합성(가장 선명한 프레임 참조, 고스트 없음) | 합성 가중치*
+
+![C55 저조도](docs/img/c55_lowlight_crop.jpg)
+*[C55] ISO 6400 1/30s 크롭: 단일 | 8장 합성*
 
 ![저조도](docs/img/compare_lowlight_crop.jpg)
 *[PC-emu] 저조도(ISO 3200) 크롭: 단일 | 8장 합성*
