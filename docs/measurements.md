@@ -182,6 +182,7 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 - 마스크: NPU vs GPU IoU 0.996.
 - 앱: `uses-native-library libcdsprpc.so` + skel을 nativeLibraryDir에 풀기(legacy packaging) + `ADSP_LIBRARY_PATH`.
   없으면 "libcdsprpc.so not found → Failed to load skel". 앱 init 1.0–1.1 s (GPU OpenCL 2.7–3.3 s).
+- **최종 앱 인물모드 (NPU 세그, Malvar, 누적합 보케, 식은 상태 42.6°C에서 5연속)**: 셔터→JPEG **1122–1270 ms**, 처리 444–527 ms, 세그 13–24 ms, disc_blur 23–26 ms, composite 35–36 ms.
 
 ### 5.5 ADPF / 발열 (L7)
 - `APerformanceHint`, `AThermal_getThermalHeadroom`은 dlsym으로 연결했으나 **이 기기는 둘 다 미지원**:
