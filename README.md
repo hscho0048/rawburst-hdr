@@ -1,7 +1,9 @@
-# burstpipe
+# burstpipe (rawburst-hdr)
 
-RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘테이션 인물모드 파이프라인. C++17, camera HAL 아래 계층.
+RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘테이션 인물모드 파이프라인. C++17. Android Camera2 API(Kotlin·NDK) 위에서 RAW16 버스트부터 JPEG까지 직접 처리한다.
 대상 기기 Galaxy C55 (Snapdragon 7 Gen 1). **현재 단계: 에뮬레이션 완성 + Galaxy C55 실측 완료** — 아래 모든 숫자는 출처가 표시돼 있다.
+
+> 코드 주석의 "설계문서 / 개발문서 N장" 표기는 공개하지 않은 내부 설계·구현 계획 문서를 가리킨다. 결정의 근거와 결과는 `docs/measurements.md`에 모두 옮겨 두었다.
 
 ![단일 프레임 | 8장 합성 | 합성+보케](docs/img/compare_portrait.jpg)
 *[PC-emu] 센서 에뮬레이터 인물 세트 4080×3060 × 8장. 단일 프레임 | 8장 합성 | 합성 + 세그 마스크 보케*
