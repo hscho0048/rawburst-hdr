@@ -15,7 +15,7 @@ static size_t scratch_bytes(int w, int h, int n) {
   size_t wh = (size_t)w * h;
   size_t align = (size_t)n * (wh / 4) * 2 * 4 / 3 + (size_t)n * 64 * 8 + (1 << 20);  // gray 피라미드 (등비합 4/3)
   size_t merge = wh * 8;                                          // num + den
-  size_t finish = wh * 4;                                         // lin
+  size_t finish = wh * 4 + (size_t)(w / 4) * (h / 4) * 4 * 4;       // lin + (ltm) 1/4 RGB + 게인
   size_t bokeh = (size_t)(w / 4 + 1) * (h / 4) * 4 * 18;          // alpha0, guide + guided 7장 + blur 3ch + blur_rgba + 누적합 4ch
   return std::max({align, merge, finish, bokeh}) + (8 << 20);
 }

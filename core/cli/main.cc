@@ -72,6 +72,7 @@ int main(int argc, char** argv) {
     else if (!std::strcmp(argv[i], "--seg-emu-latency")) seg_emu_latency = std::atof(next().c_str());
     else if (!std::strcmp(argv[i], "--seg-cpu")) p.seg_cpu = std::atoi(next().c_str());
     else if (!std::strcmp(argv[i], "--gpu-blur")) p.gpu_blur = true;
+    else if (!std::strcmp(argv[i], "--ltm")) p.finish.ltm = true;
     else if (!std::strcmp(argv[i], "--merge")) p.merge.mode = next() == "wiener" ? bp::MergeMode::kWiener : bp::MergeMode::kSpatial;
     else if (!std::strcmp(argv[i], "--wiener-c")) p.merge.wiener_c = (float)std::atof(next().c_str());
     else if (!std::strcmp(argv[i], "--demosaic")) p.finish.demosaic = next() == "bilinear" ? bp::Demosaic::kBilinear : bp::Demosaic::kMalvar;
