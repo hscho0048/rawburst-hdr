@@ -16,5 +16,9 @@ $ADB shell chmod +x $D/burstpipe_cli
 $ADB shell "test -f $D/$NAME/meta.txt" 2>/dev/null || $ADB push "$B" $D/ >/dev/null
 [ -f "$B/mask_emu.bin" ] && $ADB push "$B/mask_emu.bin" $D/$NAME/ >/dev/null
 ls third_party/litert/lib/arm64-v8a/*.so >/dev/null 2>&1 && $ADB push third_party/litert/lib/arm64-v8a/*.so $D/ >/dev/null
-$ADB shell "cd $D && LD_LIBRARY_PATH=. ./burstpipe_cli --in $NAME --out out.ppm --json t.json $*"
+# NPU (QNN HTP): 델리게이트·HTP 라이브러리 + DSP skel. skel은 ADSP_LIBRARY_PATH로 찾는다
+if [ -d third_party/qnn/lib/arm64-v8a ] && ! $ADB shell "test -f $D/libQnnHtp.so" 2>/dev/null; then
+  $ADB push third_party/qnn/lib/arm64-v8a/. $D/ >/dev/null; $ADB push third_party/qnn/hexagon/. $D/ >/dev/null
+fi
+$ADB shell "cd $D && LD_LIBRARY_PATH=. ADSP_LIBRARY_PATH=\"$D;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp\" ./burstpipe_cli --in $NAME --out out.ppm --json t.json $*"
 $ADB pull $D/t.json $BUILD/t.json >/dev/null

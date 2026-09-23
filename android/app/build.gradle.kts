@@ -24,7 +24,9 @@ android {
         cmake { path = file("src/main/cpp/CMakeLists.txt"); version = "3.22.1" }
     }
     // LiteRT .so (scripts/fetch_litert.sh)와 세그 모델은 있으면 자동 포함
-    sourceSets["main"].jniLibs.srcDirs("../../third_party/litert/lib")
+    sourceSets["main"].jniLibs.srcDirs("../../third_party/litert/lib", "../../third_party/qnn/lib")
+    // QNN HTP: DSP 쪽 skel 로더가 파일 경로를 요구 → .so를 APK에서 풀어 nativeLibraryDir에 둔다
+    packaging { jniLibs { useLegacyPackaging = true } }
     sourceSets["main"].assets.srcDirs("../../models")
     buildTypes {
         release { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("debug") }

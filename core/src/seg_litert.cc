@@ -13,6 +13,11 @@
 #include "tensorflow/lite/c/c_api_experimental.h"
 #include "tensorflow/lite/c/common.h"
 #include "tensorflow/lite/delegates/gpu/delegate.h"
+#if defined(BP_HAVE_QNN)
+#include <dlfcn.h>
+#include <cstdlib>
+#include "TFLiteDelegate/QnnTFLiteDelegate.h"
+#endif
 #if defined(BP_ANDROID)
 #include <android/log.h>
 #define SEG_LOG(...) __android_log_print(ANDROID_LOG_WARN, "burstpipe", __VA_ARGS__)
@@ -115,10 +120,12 @@ class LiteRtSegmenter : public Segmenter {
     if (interp_) TfLiteInterpreterDelete(interp_);
     if (opts_) TfLiteInterpreterOptionsDelete(opts_);
     if (gpu_) TfLiteGpuDelegateV2Delete(gpu_);
+#if defined(BP_HAVE_QNN)
+    if (npu_ && qnn_delete_) qnn_delete_(npu_);
+#endif
     if (model_) TfLiteModelDelete(model_);
   }
   bool init(const std::string& path, Delegate d, int threads) {
-    if (d == Delegate::kNpu) return false;  // QNN HTP: 설계문서 부록 A. 반나절 상한 후 GPU로 확정
     model_ = TfLiteModelCreateFromFile(path.c_str());
     if (!model_) return false;
     opts_ = TfLiteInterpreterOptionsCreate();
@@ -133,6 +140,7 @@ class LiteRtSegmenter : public Segmenter {
       if (!gpu_) return false;
       TfLiteInterpreterOptionsAddDelegate(opts_, gpu_);
     }
+    if (d == Delegate::kNpu && !add_qnn_htp(path)) return false;
     interp_ = TfLiteInterpreterCreate(model_, opts_);
     if (!interp_ || TfLiteInterpreterAllocateTensors(interp_) != kTfLiteOk) return false;
     const TfLiteTensor* in = TfLiteInterpreterGetInputTensor(interp_, 0);
@@ -156,6 +164,38 @@ class LiteRtSegmenter : public Segmenter {
     return true;
   }
  private:
+  // QNN TFLite 델리게이트 → Hexagon HTP (SM7450 = v69). .so는 dlopen (없으면 NPU만 실패, 나머지 경로는 무관).
+  // skel(DSP 쪽 라이브러리) 위치: BP_QNN_SKEL_DIR 환경변수 > ADSP_LIBRARY_PATH > 실행 파일 디렉터리.
+  bool add_qnn_htp(const std::string& model_path) {
+#if defined(BP_HAVE_QNN)
+    void* h = dlopen("libQnnTFLiteDelegate.so", RTLD_NOW | RTLD_LOCAL);
+    if (!h) { SEG_LOG("seg: dlopen libQnnTFLiteDelegate.so failed: %s\n", dlerror()); return false; }
+    auto opt_default = (TfLiteQnnDelegateOptions(*)())dlsym(h, "TfLiteQnnDelegateOptionsDefault");
+    auto create = (TfLiteDelegate * (*)(const TfLiteQnnDelegateOptions*)) dlsym(h, "TfLiteQnnDelegateCreate");
+    qnn_delete_ = (void (*)(TfLiteDelegate*))dlsym(h, "TfLiteQnnDelegateDelete");
+    if (!opt_default || !create || !qnn_delete_) { SEG_LOG("seg: QNN delegate symbols missing\n"); return false; }
+    TfLiteQnnDelegateOptions o = opt_default();
+    o.backend_type = kHtpBackend;
+    o.htp_options.precision = kHtpFp16;            // float16 모델 → HTP fp16 (양자화 모델이면 kHtpQuantized)
+    o.htp_options.performance_mode = kHtpBurst;    // 셔터 순간 추론: 지연 우선
+    const char* skel = std::getenv("BP_QNN_SKEL_DIR");
+    if (!skel) skel = std::getenv("ADSP_LIBRARY_PATH");
+    if (skel) o.skel_library_dir = skel;
+    (void)model_path;
+    npu_ = create(&o);
+    if (!npu_) { SEG_LOG("seg: TfLiteQnnDelegateCreate failed\n"); return false; }
+    TfLiteInterpreterOptionsAddDelegate(opts_, npu_);
+    return true;
+#else
+    (void)model_path;
+    SEG_LOG("seg: built without QNN (scripts/fetch_qnn.sh)\n");
+    return false;
+#endif
+  }
+#if defined(BP_HAVE_QNN)
+  TfLiteDelegate* npu_ = nullptr;
+  void (*qnn_delete_)(TfLiteDelegate*) = nullptr;
+#endif
   TfLiteModel* model_ = nullptr;
   TfLiteInterpreterOptions* opts_ = nullptr;
   TfLiteDelegate* gpu_ = nullptr;

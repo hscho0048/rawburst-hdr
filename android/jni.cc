@@ -66,7 +66,13 @@ Java_dev_burstpipe_Native_init(JNIEnv* env, jobject, jint w, jint h, jint maxFra
     g_seg = bp::Segmenter::create(s, d, 4, &init_ms);
     char buf[128];
     std::snprintf(buf, sizeof buf, "seg[%s]: %s init %.0f ms", bp::delegate_name(d),
-                  g_seg ? "ok" : "unavailable (LiteRT 미포함 빌드)", init_ms);
+                  g_seg ? "ok" :
+#if defined(BP_HAVE_LITERT)
+                  "init failed (logcat tflite/QnnDsp)"
+#else
+                  "unavailable (LiteRT 미포함 빌드)"
+#endif
+                  , init_ms);
     status = buf;
     env->ReleaseStringUTFChars(modelPath, s);
   }

@@ -122,10 +122,13 @@ class MainActivity : Activity(), CaptureController.Listener {
                     if (!f.exists()) assets.open("selfie_segmenter.tflite").use { src -> f.outputStream().use { src.copyTo(it) } }
                 }.absolutePath
             }.getOrNull()
+            // 델리게이트: 인텐트 --es delegate gpu|npu|cpu (기본 gpu). NPU는 skel을 nativeLibraryDir에서 찾게 한다
+            val delegate = when (intent?.getStringExtra("delegate")) { "npu" -> 2; "cpu" -> 0; else -> 1 }
+            if (delegate == 2) android.system.Os.setenv("ADSP_LIBRARY_PATH", applicationInfo.nativeLibraryDir + ";/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp", true)
             val cores = Runtime.getRuntime().availableProcessors()
             val cpus = if (cores >= 8) intArrayOf(4, 5, 6, 7) else IntArray(0)   // SM7450: 4~7 = A710
             val threads = minOf(4, cores)
-            val st = Native.init(cam.rawSize.width, cam.rawSize.height, cam.n, model, 1 /*gpu*/, threads, cpus)
+            val st = Native.init(cam.rawSize.width, cam.rawSize.height, cam.n, model, delegate, threads, cpus)
             nativeReady = true
             setStatus("${cam.describe()}\nnative: threads=$threads cpus=${cpus.joinToString(",")} $st")
         }

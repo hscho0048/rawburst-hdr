@@ -20,3 +20,4 @@ android/app/src/main/cpp/.cxx/
 !docs/img/*.jpg
 third_party/litert/include/
 models/*.tflite
+third_party/qnn/
