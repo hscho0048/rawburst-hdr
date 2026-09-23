@@ -127,6 +127,28 @@ void finish(const Image<uint16_t>& bayer, const BurstMeta& m, const FinishParams
   });
 }
 
+void finish_rgb(const Image<float>& rgb, const BurstMeta& m, const FinishParams& p, ThreadPool& pool, Image<uint8_t>& rgba,
+                Image<float>& rgb_lin_q) {
+  const int W = rgb.w / 3, H = rgb.h, QW = W / 4;
+  const ToneLut lut(p);
+  const float* C = m.ccm;
+  pool.parallel_for(H / 4, [&](int qy) {
+    float* q = rgb_lin_q.row(qy);
+    std::fill(q, q + QW * 3, 0.f);
+    for (int y = qy * 4; y < qy * 4 + 4; ++y) {
+      const float* s = rgb.row(y); uint8_t* o = rgba.row(y);
+      for (int x = 0; x < W; ++x) {
+        const float r = std::min(1.f, s[3 * x]), g = std::min(1.f, s[3 * x + 1]), b = std::min(1.f, s[3 * x + 2]);
+        const float R = std::max(0.f, C[0] * r + C[1] * g + C[2] * b);
+        const float G = std::max(0.f, C[3] * r + C[4] * g + C[5] * b);
+        const float B = std::max(0.f, C[6] * r + C[7] * g + C[8] * b);
+        o[4 * x] = lut(R); o[4 * x + 1] = lut(G); o[4 * x + 2] = lut(B); o[4 * x + 3] = 255;
+        if ((x >> 2) < QW) { float* qp = q + 3 * (x >> 2); qp[0] += R * (1.f / 16); qp[1] += G * (1.f / 16); qp[2] += B * (1.f / 16); }
+      }
+    }
+  });
+}
+
 // ---- Mertens 노출 융합 (휘도만) ----------------------------------------------------------------
 namespace {
 // 5탭 이항 [1 4 6 4 1]/16 가우시안 후 ½ 다운샘플 (경계 반사)

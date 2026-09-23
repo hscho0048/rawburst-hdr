@@ -8,7 +8,7 @@ namespace bp {
 
 constexpr int kMaxFrames = 16;
 
-enum class MergeMode { kSpatial, kWiener };
+enum class MergeMode { kSpatial, kWiener, kSuperRes };  // kSuperRes: superres.h (디모자이크 겸, RGB 출력)
 // tile: Bayer 단위, 겹침 stride = tile/2. kWiener: 주파수 영역 (HDR+ §5), wiener_c = 수축 강도
 struct MergeParams { float k = 2.5f; int tile = 32; MergeMode mode = MergeMode::kSpatial; float wiener_c = 8.f; };
 struct MergeStats { float mean_weight = 0; float expected_diff = 0; };

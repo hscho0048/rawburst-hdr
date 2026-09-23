@@ -88,6 +88,22 @@ void align_frame(const Pyramid& ref, const Pyramid& alt, const AlignParams& p, T
         }
         int i = cur.idx(tx, ty);
         cur.dx[i] = (int16_t)bdx; cur.dy[i] = (int16_t)bdy;
+        if (l == 0 && p.subpixel && best != UINT32_MAX) {
+          // SAD(L1) 곡면은 V자 → 등각 직선 맞춤 d = (S₋ − S₊) / (2·(max(S₋,S₊) − S₀)), 축별
+          auto sad_at = [&](int dx, int dy) -> int64_t {
+            int ax = x0 + dx, ay = y0 + dy;
+            if (ax < 0 || ay < 0 || ax + T > A.w || ay + T > A.h) return -1;
+            return tile_sad(R.row(y0) + x0, R.stride, A.row(ay) + ax, A.stride, T);
+          };
+          auto fit = [&](int64_t sm, int64_t s0, int64_t sp) -> float {
+            if (sm < 0 || sp < 0) return 0.f;
+            const int64_t den = 2 * (std::max(sm, sp) - s0);
+            if (den <= 0) return 0.f;
+            return std::min(0.5f, std::max(-0.5f, (float)(sm - sp) / (float)den));
+          };
+          cur.fx[i] = fit(sad_at(bdx - 1, bdy), best, sad_at(bdx + 1, bdy));
+          cur.fy[i] = fit(sad_at(bdx, bdy - 1), best, sad_at(bdx, bdy + 1));
+        }
         cur.err[i] = best == UINT32_MAX ? 1e9f : (float)best / (float)(T * T);
       }
     });

@@ -1,4 +1,5 @@
 #include "burstpipe/pipeline.h"
+#include "burstpipe/superres.h"
 #include <algorithm>
 #include <chrono>
 #include <cstdlib>
@@ -11,18 +12,19 @@ static size_t persistent_bytes(int w, int h) {
   return (size_t)w * h * (2 + 4) + (size_t)(w / 4) * (h / 4) * (12 + 4) + (1 << 20);
 }
 // scratch는 stage 사이에 reset되므로 stage별 최대값
-static size_t scratch_bytes(int w, int h, int n) {
+static size_t scratch_bytes(int w, int h, int n, bool superres) {
   size_t wh = (size_t)w * h;
   size_t align = (size_t)n * (wh / 4) * 2 * 4 / 3 + (size_t)n * 64 * 8 + (1 << 20);  // gray 피라미드 (등비합 4/3)
   size_t merge = wh * 8;                                          // num + den
   size_t finish = wh * 4 + (size_t)(w / 4) * (h / 4) * 4 * 4;       // lin + (ltm) 1/4 RGB + 게인
   size_t bokeh = (size_t)(w / 4 + 1) * (h / 4) * 4 * 18;          // alpha0, guide + guided 7장 + blur 3ch + blur_rgba + 누적합 4ch
+  if (superres) merge = wh * 12;                                  // 풀해상도 RGB float
   return std::max({align, merge, finish, bokeh}) + (8 << 20);
 }
 
 Pipeline::Pipeline(int w, int h, int max_frames, const PipelineParams& p)
     : w_(w), h_(h), max_frames_(std::max(1, std::min(max_frames, kMaxFrames))), p_(p), pool_(p.threads, p.cpus),
-      persistent_(persistent_bytes(w, h)), scratch_(scratch_bytes(w, h, max_frames_)) {
+      persistent_(persistent_bytes(w, h)), scratch_(scratch_bytes(w, h, max_frames_, p.merge.mode == MergeMode::kSuperRes)) {
   out_.merged = persistent_.alloc<uint16_t>(w, h);
   out_.rgba = persistent_.alloc<uint8_t>(w * 4, h);
   rgb_lin_q_ = persistent_.alloc<float>((w / 4) * 3, h / 4);
@@ -74,7 +76,9 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
   std::vector<MotionField> fields(N);
   {
     BP_STAGE(t, "align");
-    for (int i = 0; i < N; ++i) if (i != ref) align_frame(pyrs[ref], pyrs[i], p_.align, pool_, fields[i]);
+    AlignParams ap = p_.align;
+    if (p_.merge.mode == MergeMode::kSuperRes) ap.subpixel = true;  // 초해상도는 소수 이동이 핵심
+    for (int i = 0; i < N; ++i) if (i != ref) align_frame(pyrs[ref], pyrs[i], ap, pool_, fields[i]);
   }
   // 4) 강건 합성 (Bayer 도메인)
   scratch_.reset();
@@ -86,6 +90,10 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
       out_.merge_stats = MergeStats{};
       out_.merge_weights.clear();
     } else {
+      if (p_.merge.mode == MergeMode::kSuperRes) {  // Bayer 결과는 덤프·통계용: 가벼운 공간 합성 대신 참조 프레임 복사
+        for (int y = 0; y < h_; ++y) std::copy(b.frames[ref].row(y), b.frames[ref].row(y) + w_, out_.merged.row(y));
+        out_.merge_stats = MergeStats{};
+      } else
       out_.merge_stats = p_.merge.mode == MergeMode::kWiener
                              ? merge_burst_wiener(bb, ref, fields, p_.merge, pool_, scratch_, out_.merged, &out_.merge_weights)
                              : merge_burst(bb, ref, fields, p_.merge, pool_, scratch_, out_.merged, &out_.merge_weights);
@@ -96,7 +104,15 @@ const PipelineOutput& Pipeline::run(const Burst& b, const float* mask256, Segmen
   }
   // 5) 마무리: WB → 디모자이크 → CCM → 톤 → sRGB
   scratch_.reset();
-  { BP_STAGE(t, "finish"); finish(out_.merged, b.meta, p_.finish, pool_, scratch_, out_.rgba, rgb_lin_q_); }
+  if (p_.merge.mode == MergeMode::kSuperRes && N > 1) {
+    // 초해상도: 합성과 디모자이크를 한 번에 (merge 단계는 위에서 공간 합성 결과를 Bayer 덤프용으로만 남김)
+    Image<float> rgb = scratch_.alloc<float>(w_ * 3, h_);
+    { BP_STAGE(t, "superres"); merge_superres(bb, ref, fields, SrParams{}, pool_, rgb); }
+    { BP_STAGE(t, "finish"); finish_rgb(rgb, b.meta, p_.finish, pool_, out_.rgba, rgb_lin_q_); }
+  } else {
+    BP_STAGE(t, "finish");
+    finish(out_.merged, b.meta, p_.finish, pool_, scratch_, out_.rgba, rgb_lin_q_);
+  }
   scratch_.reset();
 
   // 6) 세그 합류. 정상이면 seg_wait ≈ 0 (합성 뒤에 숨음)

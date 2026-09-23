@@ -31,6 +31,9 @@ void finish(const Image<uint16_t>& bayer, const BurstMeta& m, const FinishParams
             Arena& scratch, Image<uint8_t>& rgba, Image<float>& rgb_lin_q);
 // Mertens 게인 맵: 1/4 해상도 선형 RGB(qw*3) → gain(qw×qh) ∈ [1, ltm_max_gain]
 void local_tone_gain(const Image<float>& rgb_q, const FinishParams& p, Arena& scratch, Image<float>& gain);
+// 이미 디모자이크된 풀해상도 선형 RGB(W*3, WB 후) → CCM → 톤 → rgba + rgb_lin_q (초해상도 합성 출력용)
+void finish_rgb(const Image<float>& rgb, const BurstMeta& m, const FinishParams& p, ThreadPool& pool, Image<uint8_t>& rgba,
+                Image<float>& rgb_lin_q);
 // 선형 RGB(w*3) → RGBA8(w*4). 보케 블러 결과 표시용.
 void rgb_lin_to_rgba8(const Image<float>& rgb, const ToneLut& lut, ThreadPool& pool, Image<uint8_t>& rgba);
 
