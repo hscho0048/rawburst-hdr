@@ -1,5 +1,6 @@
 #pragma once
 #include <atomic>
+#include <cstdint>
 #include <condition_variable>
 #include <functional>
 #include <mutex>
@@ -18,14 +19,18 @@ class ThreadPool {
   ~ThreadPool();
   void parallel_for(int n, const std::function<void(int)>& fn);
   int size() const { return (int)workers_.size() + 1; }
+  // 호출(생성) 스레드 + 워커들의 커널 tid (Linux/Android). ADPF 성능 힌트 세션에 등록한다.
+  std::vector<int32_t> tids() const { return tids_; }
  private:
-  void worker(int cpu);
+  void worker(int idx, int cpu);
   std::vector<std::thread> workers_;
   std::mutex m_;
   std::condition_variable cv_, done_cv_;
   const std::function<void(int)>* fn_ = nullptr;
   int n_ = 0, generation_ = 0, finished_ = 0;
   std::atomic<int> next_{0};
+  std::vector<int32_t> tids_;
+  int registered_ = 0, nworkers_ = 0;
   bool stop_ = false;
 };
 

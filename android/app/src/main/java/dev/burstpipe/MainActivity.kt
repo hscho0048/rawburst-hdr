@@ -35,6 +35,9 @@ class MainActivity : Activity(), CaptureController.Listener {
     @Volatile private var shutterAt = 0L
     private var pendingAction: String? = null
     private var pendingDir: String? = null
+    private var stressLeft = 0
+    private var pendingPolicy: String? = null
+    private var stressTotal = 0
 
     override fun onCreate(b: Bundle?) {
         super.onCreate(b)
@@ -81,6 +84,9 @@ class MainActivity : Activity(), CaptureController.Listener {
     private fun takeAction(i: Intent?) {
         pendingAction = i?.getStringExtra("action") ?: return
         pendingDir = i.getStringExtra("dir")
+        // stress: 연속 촬영 N회 (설계문서 L7). policy: "adpf,thermal" / "off"
+        stressTotal = i.getIntExtra("count", 30)
+        pendingPolicy = i.getStringExtra("policy")
         runPendingWhenReady()
     }
 
@@ -92,7 +98,18 @@ class MainActivity : Activity(), CaptureController.Listener {
         }
         pendingAction = null
         Log.i(CaptureController.TAG, "action $a (camReady=${cam.ready} native=$nativeReady)")
-        when (a) { "shoot" -> doShoot(false); "dump" -> doShoot(true); "emu" -> doEmu(pendingDir) }
+        when (a) {
+            "shoot" -> doShoot(false); "dump" -> doShoot(true); "emu" -> doEmu(pendingDir)
+            "stress" -> {
+                val pol = pendingPolicy ?: "off"
+                procHandler.post {
+                    val st = Native.setPolicy(if (pol.contains("adpf")) 400 else 0, pol.contains("thermal"))
+                    Log.i(CaptureController.TAG, "STRESS start count=$stressTotal policy=$pol $st")
+                    stressLeft = stressTotal
+                    runOnUiThread { doShoot(false) }
+                }
+            }
+        }
     }
 
     private fun openCamera(h: SurfaceHolder) {
@@ -134,6 +151,11 @@ class MainActivity : Activity(), CaptureController.Listener {
                 (d.dir?.let { "dump: $it\n" } ?: "") + "jpeg: ${jpg.name}\n$json"
             Log.i(CaptureController.TAG, "RESULT $msg")
             setStatus(msg)
+            if (stressLeft > 0) {
+                stressLeft--
+                Log.i(CaptureController.TAG, "STRESS shot=${stressTotal - stressLeft} wall=$wall $json")
+                if (stressLeft > 0) window.decorView.postDelayed({ doShoot(false) }, 50) else Log.i(CaptureController.TAG, "STRESS done")
+            }
         }
     }
 

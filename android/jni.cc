@@ -10,6 +10,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include "burstpipe/perf_hint.h"
 #include "burstpipe/pipeline.h"
 #include "burstpipe/seg.h"
 
@@ -21,6 +22,12 @@ std::unique_ptr<bp::Pipeline> g_pipe;
 std::unique_ptr<bp::Segmenter> g_seg;
 bp::PipelineParams g_params;
 int g_w = 0, g_h = 0;
+std::unique_ptr<bp::PerfSession> g_adpf;
+bool g_thermal_policy = false;
+float g_headroom = -1.f;
+bp::ThermalPolicy g_policy;
+bp::LatencyGovernor g_gov;
+bool g_use_gov = false;
 
 std::string with_extra(const bp::Timings& t, const bp::PipelineOutput& o, double wall_ms) {
   std::string js = t.json();
@@ -77,6 +84,10 @@ Java_dev_burstpipe_Native_process(JNIEnv* env, jobject, jobjectArray frames, jin
   bool ok = bp::parse_meta(is, b.meta);
   env->ReleaseStringUTFChars(metaTxt, ms);
   if (!ok || b.meta.width != g_w || b.meta.height != g_h) { LOGI("meta mismatch"); return env->NewStringUTF(""); }
+  // 발열 정책: 헤드룸(10초 예측)이 높으면 합성 프레임 수를 줄인다. 1초 안 재호출은 NaN → 직전 값 유지
+  const float h = bp::thermal_headroom(10);
+  if (h >= 0) g_headroom = h;
+  if (g_thermal_policy) n = std::min<jint>(n, g_use_gov ? g_gov.frames() : g_policy.frames_for(g_headroom));
   for (int i = 0; i < n; ++i) {
     jobject buf = env->GetObjectArrayElement(frames, i);
     auto* p = static_cast<uint16_t*>(env->GetDirectBufferAddress(buf));
@@ -90,10 +101,35 @@ Java_dev_burstpipe_Native_process(JNIEnv* env, jobject, jobjectArray frames, jin
   auto t0 = std::chrono::steady_clock::now();
   const bp::PipelineOutput& o = g_pipe->run(b, nullptr, g_seg.get(), t);
   double wall = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+  if (g_adpf) g_adpf->report((int64_t)(wall * 1e6));
+  if (g_thermal_policy && g_use_gov) g_gov.report(t.total());
   if (!copy_out(env, outRgba, o.rgba)) return env->NewStringUTF("");
   std::string js = with_extra(t, o, wall);
+  char extra[128];
+  std::snprintf(extra, sizeof extra, ",\"frames\":%d,\"headroom\":%.4f,\"thermal_status\":%d,\"adpf\":%d}", n, g_headroom,
+                bp::thermal_status(), g_adpf ? 1 : 0);
+  js.pop_back(); js += extra;
   LOGI("timings %s", js.c_str());
   return env->NewStringUTF(js.c_str());
+}
+
+// ADPF 세션(목표 ms, 0이면 끔) + 발열 정책. init 이후 호출. 반환: 상태 문자열
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_burstpipe_Native_setPolicy(JNIEnv* env, jobject, jint adpfTargetMs, jboolean thermalPolicy) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  g_adpf.reset();
+  if (g_pipe && adpfTargetMs > 0) g_adpf = bp::PerfSession::create(g_pipe->pool().tids(), (int64_t)adpfTargetMs * 1000000);
+  g_thermal_policy = thermalPolicy;
+  // 헤드룸을 줄 수 있는 기기면 헤드룸 정책, 아니면 지연 피드백 거버너
+  g_use_gov = bp::thermal_headroom(10) < 0;
+  g_gov = bp::LatencyGovernor{};
+  char buf[160];
+  std::snprintf(buf, sizeof buf, "adpf=%s(%d ms, %zu tids) thermal_policy=%d(%s) headroom=%.3f status=%d",
+                g_adpf ? "on" : (adpfTargetMs > 0 ? "unavailable" : "off"), adpfTargetMs,
+                g_pipe ? g_pipe->pool().tids().size() : 0, (int)thermalPolicy, g_use_gov ? "latency-governor" : "headroom",
+                bp::thermal_headroom(10), bp::thermal_status());
+  LOGI("policy %s", buf);
+  return env->NewStringUTF(buf);
 }
 
 extern "C" JNIEXPORT jstring JNICALL

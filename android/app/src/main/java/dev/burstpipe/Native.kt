@@ -9,6 +9,9 @@ object Native {
     /** delegate: 0 cpu, 1 gpu, 2 npu. modelPath null이면 보케 없음. 반환: 세그멘터 상태 문자열 */
     external fun init(w: Int, h: Int, maxFrames: Int, modelPath: String?, delegate: Int, threads: Int, cpus: IntArray): String
 
+    /** ADPF 목표(ms, 0=끔) + 발열 기반 N 정책. init 뒤에 호출 */
+    external fun setPolicy(adpfTargetMs: Int, thermalPolicy: Boolean): String
+
     /** frames: direct ByteBuffer RAW16 (w*h*2). outRgba: w*h*4 direct. 반환: timings json, 실패 시 "" */
     external fun process(frames: Array<ByteBuffer>, n: Int, metaTxt: String, outRgba: ByteBuffer): String
 

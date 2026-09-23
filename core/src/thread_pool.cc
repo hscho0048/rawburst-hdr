@@ -1,7 +1,19 @@
 #include "burstpipe/thread_pool.h"
+#include <algorithm>
 #if defined(__linux__)
 #include <sched.h>
+#include <unistd.h>
 #endif
+
+namespace {
+int32_t current_tid() {
+#if defined(__linux__)
+  return (int32_t)gettid();
+#else
+  return 0;
+#endif
+}
+}  // namespace
 
 namespace bp {
 
@@ -16,11 +28,16 @@ void pin_current_thread(int cpu) {
 }
 
 ThreadPool::ThreadPool(int threads, const std::vector<int>& cpus) {
+  tids_.assign(std::max(1, threads), 0);
+  tids_[0] = current_tid();
+  nworkers_ = std::max(0, threads - 1);  // 워커가 읽는 기대 개수는 스레드 생성 전에 고정 (workers_는 생성 중 변한다)
   for (int i = 0; i < threads - 1; ++i) {
     int cpu = cpus.empty() ? -1 : cpus[(i + 1) % cpus.size()];
-    workers_.emplace_back(&ThreadPool::worker, this, cpu);
+    workers_.emplace_back(&ThreadPool::worker, this, i + 1, cpu);
   }
   if (!cpus.empty()) pin_current_thread(cpus[0]);
+  std::unique_lock<std::mutex> lk(m_);  // 모든 워커가 tid를 기록할 때까지
+  done_cv_.wait(lk, [&] { return registered_ == nworkers_; });
 }
 
 ThreadPool::~ThreadPool() {
@@ -29,8 +46,13 @@ ThreadPool::~ThreadPool() {
   for (auto& t : workers_) t.join();
 }
 
-void ThreadPool::worker(int cpu) {
+void ThreadPool::worker(int idx, int cpu) {
   pin_current_thread(cpu);
+  {
+    std::lock_guard<std::mutex> lk(m_);
+    tids_[idx] = current_tid();
+    if (++registered_ == nworkers_) done_cv_.notify_all();
+  }
   int seen = 0;
   for (;;) {
     const std::function<void(int)>* fn; int n;

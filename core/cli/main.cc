@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "burstpipe/perf_hint.h"
 #include "burstpipe/pipeline.h"
 #include "burstpipe/seg.h"
 
@@ -15,6 +16,7 @@ static const char* kUsage =
     "              [--json timings.json] [--dump-merged merged.raw16] [--dump-weights w.pgm] [--dump-alpha a.pgm]\n"
     "              [--ev 2.8] [--radius 12] [--k 2.5] [--repeat R]\n"
     "              [--seg-model PATH --delegate cpu|gpu|npu|emu] [--seg-emu-latency MS] [--seg-cpu C] [--gpu-blur]\n"
+    "              [--adpf TARGET_MS] [--thermal-policy] [--csv per_iter.csv]   (연속 --repeat 측정용)\n"
     "  --delegate emu: --seg-model 자리에 256x256 float 마스크(mask_emu.bin)를 받는 에뮬레이션 세그멘터\n";
 
 static std::vector<int> parse_ints(const std::string& s) {
@@ -44,7 +46,9 @@ static bool write_pgm8_float(const std::string& path, const float* v, int w, int
 int main(int argc, char** argv) {
   std::string in, out, mask, json, dump_merged, dump_weights, dump_alpha, seg_model;
   int frames = 0, repeat = 1;
-  double seg_emu_latency = 0;
+  double seg_emu_latency = 0, adpf_target_ms = 0;
+  bool thermal_policy = false;
+  std::string csv;
   bool have_delegate = false;
   bp::Delegate del = bp::Delegate::kCpu;
   bp::PipelineParams p;
@@ -68,6 +72,9 @@ int main(int argc, char** argv) {
     else if (!std::strcmp(argv[i], "--seg-emu-latency")) seg_emu_latency = std::atof(next().c_str());
     else if (!std::strcmp(argv[i], "--seg-cpu")) p.seg_cpu = std::atoi(next().c_str());
     else if (!std::strcmp(argv[i], "--gpu-blur")) p.gpu_blur = true;
+    else if (!std::strcmp(argv[i], "--adpf")) adpf_target_ms = std::atof(next().c_str());
+    else if (!std::strcmp(argv[i], "--thermal-policy")) thermal_policy = true;
+    else if (!std::strcmp(argv[i], "--csv")) csv = next();
     else if (!std::strcmp(argv[i], "--delegate")) {
       have_delegate = bp::parse_delegate(next(), del);
       if (!have_delegate) { std::fputs(kUsage, stderr); return 2; }
@@ -110,7 +117,35 @@ int main(int argc, char** argv) {
   const float* mp = mask256.empty() ? nullptr : mask256.data();
   bp::Timings t;
   const bp::PipelineOutput* o = nullptr;
-  for (int r = 0; r < repeat; ++r) { t = bp::Timings{}; o = &pipe.run(b, mp, seg.get(), t); }  // 마지막 회차만 보고 (웜업 제외)
+  std::unique_ptr<bp::PerfSession> adpf;
+  if (adpf_target_ms > 0) {
+    adpf = bp::PerfSession::create(pipe.pool().tids(), (int64_t)(adpf_target_ms * 1e6));
+    std::printf("adpf: %s (target %.0f ms, %zu threads)\n", adpf ? "session ok" : "unavailable", adpf_target_ms, pipe.pool().tids().size());
+  }
+  bp::ThermalPolicy policy; policy.n_max = n;
+  FILE* cf = csv.empty() ? nullptr : std::fopen(csv.c_str(), "w");
+  if (cf) std::fprintf(cf, "iter,frames,total_ms,wall_ms,headroom,status,cpu7_mhz,cpu4_mhz\n");
+  float headroom = -1.f;
+  auto read_mhz = [](int cpu) {
+    char path[96]; std::snprintf(path, sizeof path, "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", cpu);
+    FILE* f = std::fopen(path, "r"); long v = 0;
+    if (f) { if (std::fscanf(f, "%ld", &v) != 1) v = 0; std::fclose(f); }
+    return (int)(v / 1000);
+  };
+  for (int r = 0; r < repeat; ++r) {  // 마지막 회차만 보고 (웜업 제외). --csv면 회차별 기록
+    const float h = bp::thermal_headroom(10);
+    if (h >= 0) headroom = h;  // 1초 안에 다시 부르면 NaN → 직전 값 유지
+    bp::Burst bb = b;
+    if (thermal_policy) { const int nn = policy.frames_for(headroom); bb.frames.resize(nn); bb.meta.frames.resize(nn); }
+    t = bp::Timings{};
+    auto w0 = std::chrono::steady_clock::now();
+    o = &pipe.run(bb, mp, seg.get(), t);
+    const double wall = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - w0).count();
+    if (adpf) adpf->report((int64_t)(wall * 1e6));
+    if (cf) std::fprintf(cf, "%d,%zu,%.2f,%.2f,%.4f,%d,%d,%d\n", r, bb.frames.size(), t.total(), wall, headroom,
+                         bp::thermal_status(), read_mhz(7), read_mhz(4));
+  }
+  if (cf) std::fclose(cf);
 
   std::printf("%dx%d frames=%d ref=%d threads=%d mean_weight=%.3f bokeh=%d scratch=%zu/%zuMB persistent=%zuMB\n",
               meta.width, meta.height, n, o->ref, p.threads, o->merge_stats.mean_weight, (int)o->bokeh,
