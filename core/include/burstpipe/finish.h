@@ -4,7 +4,9 @@
 
 namespace bp {
 
-struct FinishParams { float ev_gain = 2.8f; float white_point = 4.0f; };
+enum class Demosaic { kBilinear, kMalvar };
+// kMalvar: Malvar-He-Cutler 2004 (5×5 선형, 색 간 그래디언트 보정). 에뮬 정답 대비 PSNR은 test_demosaic.
+struct FinishParams { float ev_gain = 2.8f; float white_point = 4.0f; Demosaic demosaic = Demosaic::kMalvar; };
 
 // t = lin*ev_gain ∈ [0, white_point] → Reinhard extended → sRGB 8bit
 struct ToneLut {

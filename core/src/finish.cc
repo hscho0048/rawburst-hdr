@@ -40,22 +40,41 @@ void finish(const Image<uint16_t>& bayer, const BurstMeta& m, const FinishParams
     std::fill(q, q + QW * 3, 0.f);
     for (int y = qy * 4; y < qy * 4 + 4; ++y) {
       uint8_t* o = rgba.row(y);
-      // 경계는 반사(−1 → +1): 같은 CFA 색 위상을 유지한다. 클램프하면 이웃 색이 섞인다.
-      const float* rm = lin.row(y == 0 ? 1 : y - 1);
-      const float* r0 = lin.row(y);
-      const float* rp = lin.row(y == H - 1 ? H - 2 : y + 1);
+      // 경계는 반사(−k → +k): 같은 CFA 색 위상을 유지한다. 클램프하면 이웃 색이 섞인다.
+      auto ry = [&](int yy) { return lin.row(yy < 0 ? -yy : yy >= H ? 2 * H - 2 - yy : yy); };
+      const float* rm2 = ry(y - 2); const float* rm = ry(y - 1); const float* r0 = lin.row(y);
+      const float* rp = ry(y + 1); const float* rp2 = ry(y + 2);
+      const bool malvar = p.demosaic == Demosaic::kMalvar;
       for (int x = 0; x < W; ++x) {
         const int c = kCfaColor[m.cfa][(y & 1) * 2 + (x & 1)];
         const float v = r0[x];
-        const int xm = x == 0 ? 1 : x - 1;
-        const int xp = x == W - 1 ? W - 2 : x + 1;
+        auto rx = [&](int xx) { return xx < 0 ? -xx : xx >= W ? 2 * W - 2 - xx : xx; };
+        const int xm = rx(x - 1), xp = rx(x + 1);
         const float hsum = r0[xm] + r0[xp], vsum = rm[x] + rp[x];
+        const float dsum = rm[xm] + rm[xp] + rp[xm] + rp[xp];
         float r, g, b;
-        switch (c) {
-          case 0: r = v; g = 0.25f * (hsum + vsum); b = 0.25f * (rm[xm] + rm[xp] + rp[xm] + rp[xp]); break;
-          case 3: b = v; g = 0.25f * (hsum + vsum); r = 0.25f * (rm[xm] + rm[xp] + rp[xm] + rp[xp]); break;
-          case 1: g = v; r = 0.5f * hsum; b = 0.5f * vsum; break;   // Gr: R 행
-          default: g = v; r = 0.5f * vsum; b = 0.5f * hsum; break;  // Gb: B 행
+        if (!malvar) {
+          switch (c) {
+            case 0: r = v; g = 0.25f * (hsum + vsum); b = 0.25f * dsum; break;
+            case 3: b = v; g = 0.25f * (hsum + vsum); r = 0.25f * dsum; break;
+            case 1: g = v; r = 0.5f * hsum; b = 0.5f * vsum; break;   // Gr: R 행
+            default: g = v; r = 0.5f * vsum; b = 0.5f * hsum; break;  // Gb: B 행
+          }
+        } else {
+          // Malvar-He-Cutler: 같은 색 ±2 이웃의 라플라시안으로 색 간 그래디언트를 보정
+          const int xm2 = rx(x - 2), xp2 = rx(x + 2);
+          const float h2 = r0[xm2] + r0[xp2], v2 = rm2[x] + rp2[x];
+          const float gx = (4.f * v + 2.f * (hsum + vsum) - (h2 + v2)) * 0.125f;          // G at R/B
+          const float cx = (6.f * v + 2.f * dsum - 1.5f * (h2 + v2)) * 0.125f;            // B at R / R at B
+          const float hz = (5.f * v + 4.f * hsum - h2 - dsum + 0.5f * v2) * 0.125f;      // 가로 이웃 색 at G
+          const float vt = (5.f * v + 4.f * vsum - v2 - dsum + 0.5f * h2) * 0.125f;      // 세로 이웃 색 at G
+          switch (c) {
+            case 0: r = v; g = gx; b = cx; break;
+            case 3: b = v; g = gx; r = cx; break;
+            case 1: g = v; r = hz; b = vt; break;   // Gr: R 행, B 열
+            default: g = v; r = vt; b = hz; break;  // Gb: B 행, R 열
+          }
+          r = std::max(0.f, r); g = std::max(0.f, g); b = std::max(0.f, b);
         }
         float R = std::max(0.f, C[0] * r + C[1] * g + C[2] * b);
         float G = std::max(0.f, C[3] * r + C[4] * g + C[5] * b);

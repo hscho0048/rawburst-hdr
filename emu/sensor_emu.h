@@ -42,6 +42,8 @@ class SensorEmu {
   const EmuTruth& truth() const { return truth_; }
   // frame i → out (width×height RAW16). noise=false면 노이즈 없는 기대값 (SNR/PSNR 기준 영상)
   void render(int i, Image<uint16_t>& out, bool noise, ThreadPool& pool) const;
+  // 모자이크 전 정답: 픽셀마다 WB 적용 후 정규화 선형 RGB (finish의 lin과 같은 규약: min(1, raw)·wb, 1에서 클립). out: W*H*3
+  void render_rgb_truth(int i, float* out, ThreadPool& pool) const;
   // 세그 모델 출력 흉내: 256×256, frame 0 기준 인물 실루엣(머리카락 가닥 제외) 커버리지를 블러. 인물 장면 외엔 0
   void seg_mask256(float* out) const;
   // GT 알파 (머리카락 포함), (w,h) 해상도로 frame 0 기준 커버리지

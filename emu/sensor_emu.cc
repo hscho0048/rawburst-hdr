@@ -287,6 +287,25 @@ void SensorEmu::render(int i, Image<uint16_t>& out, bool noise, ThreadPool& pool
   });
 }
 
+void SensorEmu::render_rgb_truth(int i, float* out, ThreadPool& pool) const {
+  const int W = p_.width, Hh = p_.height;
+  const float sx = truth_.shift_x[i], sy = truth_.shift_y[i];
+  const float* M = cam_from_srgb_;
+  const int wbi[3] = {0, 1, 3};
+  pool.parallel_for(Hh, [&](int y) {
+    for (int x = 0; x < W; ++x) {
+      float s[3];
+      scene_rgb(x + 0.5f - sx, y + 0.5f - sy, i, s);
+      for (int ch = 0; ch < 3; ++ch) {
+        const float cam = M[ch * 3 + 0] * s[0] + M[ch * 3 + 1] * s[1] + M[ch * 3 + 2] * s[2];
+        const float g = meta_.wb_gains[wbi[ch]];
+        const float raw = std::min(1.f, std::max(0.f, cam / g * expo_scale_));
+        out[((size_t)y * W + x) * 3 + ch] = std::min(1.f, raw * g);
+      }
+    }
+  });
+}
+
 void SensorEmu::seg_mask256(float* out) const {
   std::fill(out, out + 256 * 256, 0.f);
   if (p_.scene != Scene::kPortrait) return;

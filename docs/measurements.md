@@ -136,17 +136,86 @@ align/merge/finish 구간 워커는 cpu4–7에만, 점유 85–100%, 클럭 236
 2. **센서 방향**: RAW는 센서 방향(90°) 그대로라 모델이 옆으로 누운 사람을 받음 → 머리·상체만 검출. `meta.txt`에 `orientation` 추가, 모델 입력을 정립 회전하고 마스크를 되돌림 (`test_seg` 왕복 테스트).
 3. **델리게이트 스레드 친화성**: 앱에서 "GpuDelegate must run on the same thread where it was initialized" → 보케가 조용히 꺼짐. 생성·추론·해제를 전용 스레드 1개가 소유 (`ThreadBoundSegmenter`, 설계문서 6장). cli는 우연히 통과했었다.
 
-## 5. 서술 ("X→Y ms, 원인 Z") — 기기 수치로 채울 것
-1. (PC-emu 예비) merge 타일 선택을 "정렬 타일 1개의 err" → "footprint 후보 최대 4개 중 최소 SAD"로 바꾸자 조명 경계의 밝기 번짐(최대 +450 DN)이 사라지고 삼각대 RMSE 4.58 → 1.65 DN (8장 평균 이론치).
-2. (AVD 예비) HAL noise_profile a=1.0을 그대로 쓰면 움직임 거부가 꺼짐(mean_weight 0.999) → 타당성 검사 후 추정으로 대체해 0.815.
-3. (C55) merge 901 → 280 ms (scalar 1→4 big, 3.2배) → 165 ms (NEON, 1.7배). L0 대비 5.5배.
-4. (C55) 4스레드 little 고정은 big 대비 5.3배 느림(2360 vs 442 ms). 8스레드 미고정(373 ms)이 4 big 고정(442 ms)보다 빠름 — A510이 타일을 "물고 늘어진다"는 설계문서 가설과 반대. 동적 작업 큐(원자 카운터)라 느린 코어가 적게 가져가기 때문. NEON에서는 차이 8%(271 vs 295).
-6. (C55) 세그 CPU 델리게이트 370 ms가 합성 스레드와 big 코어를 다퉈 align 47 → 257 ms, 임계 경로 +335 ms. GPU(OpenCL) 19–31 ms로 옮기자 경쟁이 사라지고 seg_wait 0 — 추론은 합성 뒤에 완전히 숨는다.
-7. (C55) 앱 GPU 델리게이트가 OpenGL로 폴백(32–50 ms) — Android 12+ 앱 네임스페이스에 벤더 libOpenCL이 없어서. `uses-native-library` 선언 후 OpenCL 19–35 ms, 대신 init 0.23 → 2.7 s (앱 시작 시 웜업으로 숨김).
-5. (C55) 합성 후보 재평가(PC-emu 서술 1의 품질 수정)가 `tile_sad_neon` 31%의 상당 부분 — 품질과 속도의 교환. 다음 최적화 대상.
+## 5. 선택 항목 (설계문서 부록 A / L5·L7·NPU·품질 v2) [C55 + PC-emu]
 
-## 6. 하지 않은 것과 이유
-- fp16 merge: raw 10bit × 가중합 8 = 8184까지 누적, fp16 가수 11bit → 4096 이상에서 정수 해상도 4 → ±2 LSB 양자화가 SNR 측정을 갉아먹음. fp16은 보케 블러에만.
-- 서브픽셀 정렬, 주파수 영역 Wiener 합성: v2 (위 1장 "서브픽셀 잔차"가 정량 근거).
+### 5.1 합성 최적화 — 측정으로 기각한 2개
+| 시도 | 가설 | C55 NEON 4big merge | 판정 |
+|---|---|---|---|
+| 기준 (타일 우선, 전역 num/den) | — | 165–193 ms | 유지 |
+| 후보 SAD 행 쌍 솎기 (비용 ½) | simpleperf `tile_sad` 31% → 줄이면 빨라진다 | 170 ms (변화 없음) | 기각 |
+| 밴드 스트리밍 (전역 num/den 100MB 제거, L2 상주 누적기) | 대역폭 병목 제거 | 205 → 251–265 ms (**느려짐**) | 기각 |
+
+원인 (simpleperf 비교): 새 구조는 명령어 16.5G → 15.3G로 **적은데** 사이클 6.4G → 7.8G, IPC 2.59 → 1.96, LLC miss 5500만 → 8400만.
+기존 구조에서는 **타일 전체 SAD가 그 타일 32행 × 8프레임을 캐시로 끌어오는 프리페치 역할**을 해서 바로 다음 누적(`merge_row`)이 캐시에서 읽었다.
+솎기·패스 분리가 그 지역성을 깼다 → `merge_row_neon` 비중 18.5% → 34%. 교훈: "핫스팟 함수 비용"과 "그 함수가 만드는 캐시 상태"는 따로 봐야 한다.
+
+### 5.2 서브픽셀 정렬 — 측정으로 기각
+- 구현: 최하단 SAD 곡면 등각 직선 맞춤(추정 정확도: 참 0.25/0.5/3.3 px → 0.249/0.500/3.273) + 같은 CFA 색 평면 쌍선형 적용.
+- 결과 (`tools/rmse_clean.py`, 에뮬 정답 대비 RMSE DN, 4080×3060×8):
+
+| | 전체 | 엣지(그래디언트 상위 10%) | 평탄 |
+|---|---|---|---|
+| 손떨림, 정수 정렬 | 3.27 | **7.39** | 2.35 |
+| 손떨림, 서브픽셀 | 3.56 | 8.55 | 2.33 |
+| 삼각대, 정수 | 1.62 | **1.65** | 1.63 |
+| 삼각대, 서브픽셀 | 1.82 | 3.50 | 1.50 |
+
+- 반해상도 색 평면(이웃 간격 raw 4px)에서의 보간은 alt 프레임을 흐리게 만들어, 선명한 ref와 섞일 때 엣지 오차가 오히려 커진다.
+  SNR 수치는 11.7 dB로 "좋아 보이지만" 그건 보간에 의한 평활이다. HDR+(2016)가 Bayer 합성을 정수 정렬로 둔 이유.
+  제대로 하려면 Wronski 2019(커널 회귀 초해상도). → 코드 되돌림.
+
+### 5.3 보케 — 알고리즘이 GPU보다 먼저
+| 단계 | 이전 | 이후 | 방법 |
+|---|---|---|---|
+| disc_blur (반지름 12, 1020×768) | 96 ms (CPU 직접 합산 ~450탭) | **17 ms** | 행 누적합: 원 = 행별 구간합 → 픽셀당 25행×2 조회. 직접 합산 대비 max 차 1.5e-5 (`test_guided`) |
+| composite (4080×3072) | 72–80 ms | **28 ms** | 세로 보간을 행 버퍼로 1번, 열 보간 계수 테이블, `std::lround` 제거 (출력 차 ≤1/255) |
+| Vulkan compute disc_blur (직접 합산, 공유메모리 타일) | — | 커널 70 ms + 업로드 2 + 다운로드 9 | Adreno 644, 타임스탬프 쿼리. CPU와 출력 차 ≤1/255 |
+
+- L5 결정: 누적합 CPU 17 ms < GPU 전송만 11 ms + 커널 → **GPU 경로는 기본 꺼짐** (`--gpu-blur`로 측정 가능하게 유지).
+  "GPU 이득이 가장 큰 단계"라던 설계 가정은 O(r²) 알고리즘을 전제로 한 것이었다.
+- 인물모드 처리(합성+보케, GPU 세그): 445 → 325 ms.
+
+### 5.4 NPU — Qualcomm AI Engine Direct (QNN) HTP v69
+- QAIRT 2.45 `libQnnTFLiteDelegate.so` (dlopen) + `libQnnHtpV69Stub/Skel`. HTP fp16, burst 모드.
+- **246개 중 245 노드 위임**, 남는 1개 = MediaPipe 커스텀 op(CPU 자체 커널) → 3 파티션.
+- cli: init 0.84–0.96 s, 추론 9.5–24 ms (파티션 왕복 편차). GPU(OpenCL): init 2.2–2.4 s, 19–31 ms.
+- 마스크: NPU vs GPU IoU 0.996.
+- 앱: `uses-native-library libcdsprpc.so` + skel을 nativeLibraryDir에 풀기(legacy packaging) + `ADSP_LIBRARY_PATH`.
+  없으면 "libcdsprpc.so not found → Failed to load skel". 앱 init 1.0–1.1 s (GPU OpenCL 2.7–3.3 s).
+
+### 5.5 ADPF / 발열 (L7)
+- `APerformanceHint`, `AThermal_getThermalHeadroom`은 dlsym으로 연결했으나 **이 기기는 둘 다 미지원**:
+  `dumpsys performance_hint` → `Hint Session Support: false`, `dumpsys thermalservice` → 헤드룸 임계값 전부 NaN.
+- 150연속 촬영 (앱, 보케 없음, 정책 없음): 1–50장 처리 중앙값 412–414 ms → **81장 이후 515–530 ms (+28%)**, 빅코어 최대 클럭 2.40 → 1.77 GHz.
+  그동안 **Thermal Status는 계속 0** — 상태 API는 스로틀의 선행 신호가 아니다.
+- 그래서 지연 피드백 거버너(`LatencyGovernor`: 처리 시간 EMA > 목표 450 ms×1.1이면 N−1, <×0.8이면 N+1, 변경 시 EMA 비례 보정):
+
+| 150연속 | 81–110장 처리 중앙값 | 111–150장 | 셔터→JPEG (111–150) | 평균 N |
+|---|---|---|---|---|
+| 정책 없음 | 515 ms | 530 ms | 1328 ms | 8 |
+| 지연 거버너 | 459 ms | **458 ms** | **1235 ms** | 8 → 7 → 6 |
+
+  N 8→6의 대가: 이론 SNR −1.25 dB. 주의: 거버너 측정은 이전 스트레스의 클럭 캡(1.77 GHz)이 남은 상태에서 시작 — 조건이 완전히 같지 않다.
+
+### 5.6 Malvar-He-Cutler 디모자이크 (품질 v2)
+- 에뮬 정답 RGB(모자이크 전, 같은 CCM·톤) 대비 PSNR: bilinear 27.4 dB → **Malvar 29.3 dB (+1.8)**, RGGB·GBRG 동일 (`test_demosaic`).
+- C55 finish 비용: +12–60 ms (측정 편차 큼, 발열). 기본값 Malvar, `--demosaic bilinear`로 전환.
+
+## 6. 서술 ("X→Y ms, 원인 Z")
+1. (PC-emu) merge 타일 선택을 "정렬 타일 1개의 err" → "footprint 후보 최대 4개 중 최소 SAD"로 바꾸자 조명 경계의 밝기 번짐(최대 +450 DN)이 사라지고 삼각대 RMSE 4.58 → 1.65 DN (8장 평균 이론치).
+2. (AVD) HAL noise_profile a=1.0을 그대로 쓰면 움직임 거부가 꺼짐(mean_weight 0.999) → 타당성 검사 후 추정으로 대체해 0.815.
+3. (C55) merge 901 → 280 ms (scalar 1→4 big, 3.2배) → 165 ms (NEON, 1.7배). L0 대비 5.5배.
+4. (C55) 4스레드 little 고정은 big 대비 5.3배 느림(2360 vs 442 ms). 8스레드 미고정(373 ms)이 4 big 고정(442 ms)보다 빠름 — 설계문서 가설과 반대. 동적 작업 큐(원자 카운터)라 느린 코어가 적게 가져가기 때문.
+5. (C55) 세그 CPU 델리게이트 370 ms가 합성 스레드와 big 코어를 다퉈 align 47 → 257 ms. GPU(OpenCL) 19–31 ms로 옮기자 seg_wait 0.
+6. (C55) 앱 GPU 델리게이트가 OpenGL로 폴백(32–50 ms) → `uses-native-library libOpenCL.so` 후 19–35 ms, init 0.23 → 2.7 s (앱 시작 시 웜업).
+7. (C55) disc_blur 96 → 17 ms: O(r²) 직접 합산 → 행 누적합 O(r). 그 결과 Vulkan(전송만 11 ms)의 이점이 사라져 GPU 경로를 기본에서 뺐다.
+8. (C55) 합성 "대역폭 최적화"(밴드 스트리밍)가 165 → 251 ms로 역효과: 명령어는 줄었지만 IPC 2.59 → 1.96. SAD가 하던 암묵적 프리페치를 깼기 때문 → 되돌림.
+9. (C55) 150연속 촬영에서 81장째부터 처리 +28%(빅코어 2.40 → 1.77 GHz), Thermal Status는 0 유지·헤드룸 API 미지원 → 처리 시간 피드백으로 N을 8→6으로 낮춰 458 ms 유지 (SNR −1.25 dB).
+10. (C55) 세그 NPU(HTP) 9.5–24 ms, init 0.84 s vs GPU 19–31 ms, init 2.2 s — 245/246 노드 위임, 남은 커스텀 op 1개가 파티션 왕복 편차의 원인.
+
+## 7. 하지 않은 것과 이유
+- fp16 merge: raw 10bit × 가중합 8 = 8184까지 누적, fp16 가수 11bit → 4096 이상에서 정수 해상도 4 → ±2 LSB 양자화가 SNR 측정을 갉아먹음.
+- 서브픽셀: 5.2의 측정으로 기각 (Bayer 평면 보간은 엣지를 흐림). 초해상도형 합성(Wronski 2019)은 범위 밖.
+- 주파수 영역 Wiener 합성, Mertens 노출 융합: 공간 합성 + Reinhard로 충분한 범위에서 멈춤 (Malvar를 택함).
 - Camera2 NDK 포팅: Kotlin 캡처 + direct ByteBuffer JNI로 충분 (복사 1회).
-- Vulkan 보케, QNN HTP, ADPF/서멀: 설계문서 부록 A (4주차 선택).
+- 커스텀 op의 HTP 구현(Op Package): 남은 1노드의 파티션 왕복 제거용. 이득 대비 비용이 큼.

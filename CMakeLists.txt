@@ -86,4 +86,5 @@ foreach(t test_align test_merge test_guided test_neon_eq test_finish test_thread
 endforeach()
 if(BURSTPIPE_EMU)
   bp_test(test_pipeline)
+  bp_test(test_demosaic)
 endif()

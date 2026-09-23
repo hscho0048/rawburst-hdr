@@ -20,7 +20,10 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 | 12MP×8 합성 (NEON, big 4코어) | **295 ms** (scalar 1스레드 1425 ms) | **C55** |
 | 앱 셔터→JPEG (연속 5회) | **1.04–1.14 s** | **C55** |
 | SNR 이득, 실제 장면 | 정적 핸드헬드 **8.1 dB**, ISO 6400 **9.9 dB** | **C55** |
-| 세그 LiteRT GPU(OpenCL) vs CPU | **19–31 ms** vs 370 ms (CPU는 합성과 big 코어 경쟁), seg_wait 0 | **C55** |
+| 세그 LiteRT NPU(HTP) / GPU(OpenCL) / CPU | **9.5–24 ms** / 19–31 ms / 370 ms (CPU는 합성과 big 코어 경쟁), seg_wait 0 | **C55** |
+| 보케 disc_blur / composite | 96 → **17 ms** (행 누적합) / 76 → **28 ms** | **C55** |
+| 150연속 촬영 (81장~ 스로틀) | 처리 530 ms → **458 ms** (지연 거버너, N 8→6) | **C55** |
+| 디모자이크 Malvar vs bilinear | +1.8 dB PSNR (에뮬 정답 대비) | PC-emu |
 | 앱 셔터→JPEG, 인물모드(보케 포함) | **1.24–1.32 s** | **C55** |
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
@@ -69,25 +72,33 @@ emu/ (core가 모르는 에뮬레이션 계층)
 6. **(C55) 센서 방향**: 모델이 옆으로 누운 사람을 받아 상체만 검출 → 정립 회전 후 마스크 역회전, 전경 2.9% → 15.2%.
 7. **(C55) GPU 델리게이트 스레드 친화성**: 앱에서만 추론 실패(보케가 조용히 꺼짐) → 델리게이트 전용 소유 스레드.
 8. **(C55) 결과 CCM 단위행렬** → ForwardMatrix로 CCM 계산. **앱 OpenCL 폴백** → `uses-native-library`.
-9. 개발문서의 정렬 테스트 텍스처 `((x/8)*73+(y/8)*151)%11`은 (32,16)px 주기 격자라 거친 단에서 가짜 정합 → 비주기 랜덤 블록으로 교체.
+9. **(C55) 보케는 알고리즘이 먼저**: 원형 커널 직접 합산(O(r²)) → 행 누적합(O(r))으로 96 → 17 ms. Vulkan compute(커널 70 ms + 전송 11 ms)의 이점이 사라져 GPU 경로는 기본에서 뺐다.
+10. **(C55) 측정으로 기각한 최적화**: 합성 밴드 스트리밍(대역폭 절감)이 165 → 251 ms로 역효과 — SAD가 하던 암묵적 프리페치를 깸(IPC 2.59 → 1.96). 서브픽셀 정렬은 에뮬 정답 대비 엣지 RMSE 7.4 → 8.5로 악화 → 둘 다 되돌림.
+11. **(C55) 발열**: ADPF 힌트·헤드룸 API 모두 이 기기에서 미지원, Thermal Status는 스로틀 중에도 0 → 처리 시간 피드백 거버너로 N 조절.
+12. 개발문서의 정렬 테스트 텍스처 `((x/8)*73+(y/8)*151)%11`은 (32,16)px 주기 격자라 거친 단에서 가짜 정합 → 비주기 랜덤 블록으로 교체.
 
 ## 빌드·실행
 
 ```bash
 # PC (Windows면 WSL2 Ubuntu)
-bash scripts/test_pc.sh               # 빌드 + 테스트 7개
+bash scripts/test_pc.sh               # 빌드 + 테스트 9개
 bash scripts/emu_bursts.sh full       # 에뮬 버스트 5세트 → bursts/emu_*
 bash scripts/run_emu_demo.sh          # 결과 이미지·SNR·IoU → out/
 bash scripts/bench_pc.sh              # 스레드 스윕 표
 
 # arm64 / Android 에뮬레이터
 NDK=... bash scripts/build_arm64.sh                  # ABI=x86_64, NO_NEON=1 옵션
+bash scripts/fetch_litert.sh                         # (선택) LiteRT + selfie 모델 다운로드 → 실제 세그
+QAIRT_SDK=... bash scripts/fetch_qnn.sh              # (선택) NPU: 로컬 QAIRT SDK에서 QNN 델리게이트·HTP v69 복사
+NDK=... bash scripts/build_shaders.sh                # Vulkan 셰이더 → SPIR-V 헤더 (생성물 커밋됨)
 ADB=... bash scripts/bench_device.sh bursts/emu_portrait_half --threads 4 --seg-model emu_portrait_half/mask_emu.bin --delegate emu
 cd android && ./gradlew assembleDebug && cd ..
 ADB=... bash scripts/app_emu_test.sh                 # 앱 설치 → EMU/DUMP/SHOOT 자동 실행 → out/device_dump
 ```
 
-cli: `burstpipe_cli --in DIR --out out.ppm [--frames N --threads T --cpus 4,5,6,7 --mask m.bin | --seg-model M --delegate cpu|gpu|emu] [--json t.json --dump-merged --dump-weights --dump-alpha]`
+cli: `burstpipe_cli --in DIR --out out.ppm [--frames N --threads T --cpus 4,5,6,7 --mask m.bin | --seg-model M --delegate cpu|gpu|npu|emu] [--demosaic malvar|bilinear] [--gpu-blur] [--adpf MS --thermal-policy --csv f] [--json t.json --dump-merged --dump-weights --dump-alpha]`
+
+앱 자동화: `adb shell am start -n dev.burstpipe/.MainActivity --es action shoot|dump|emu|stress [--ei count 30 --es policy thermal] [--es delegate npu|gpu|cpu]`
 
 덤프 형식 (`bursts/<name>/`): `frame_NN.raw16`(W×H uint16 LE) + `meta.txt` (width/height/cfa/white_level/black_level/wb_gains/ccm/noise_profile/frame 줄). 에뮬 세트는 추가로 `truth.txt`, `mask_emu.bin`, `alpha_gt_q.pgm`, `clean_NN.raw16`.
 
@@ -95,21 +106,21 @@ cli: `burstpipe_cli --in DIR --out out.ppm [--frames N --threads T --cpus 4,5,6,
 
 ```
 core/include/burstpipe/  image burst timings thread_pool align merge finish bokeh seg pipeline (.h)
-core/src/                구현 + *_neon.cc + seg_litert.cc(arm64+LiteRT일 때만)
-core/tests/              stage당 1개 + test_threadpool + test_pipeline(에뮬 수용 테스트)
+core/src/                구현 + *_neon.cc + seg_litert.cc(LiteRT/QNN) + gpu_blur.cc(Vulkan) + perf_hint.cc(ADPF/발열) + shaders/
+core/tests/              stage당 1개 + test_threadpool + test_seg(방향·거버너) + test_demosaic(PSNR) + test_pipeline(에뮬 수용)
 core/cli/                burstpipe_cli
 emu/                     센서 에뮬레이터 (burstpipe_emu)
 android/                 Gradle 앱 (Kotlin Camera2 + jni.cc)
-tools/                   view_raw snr seg_infer mask_iou compare3 plot_timings ppm2png (.py)
-scripts/                 build_pc test_pc emu_bursts run_emu_demo bench_pc build_arm64 bench_device trace_device perf_device app_emu_test fetch_litert
+tools/                   view_raw snr snr_auto rmse_clean seg_infer mask_iou compare3 plot_timings ppm2png (.py)
+scripts/                 build_pc test_pc emu_bursts run_emu_demo bench_pc build_arm64 build_shaders bench_device trace_device perf_device app_emu_test fetch_litert fetch_qnn
 docs/                    measurements.md, hardware_test.md, img/
 ```
 
 ## 하지 않은 것 / 다음 단계
-- 실기기 측정 전부 → [docs/hardware_test.md](docs/hardware_test.md)
-- 서브픽셀 정렬 (에뮬 정답으로 엣지 잔차가 정량화돼 있음), 주파수 영역 Wiener 합성, Malvar 디모자이크, Mertens 융합
-- Vulkan 보케, QNN HTP, ADPF/서멀 N 조절, Camera2 NDK 포팅
-- fp16 merge는 하지 않는다 (정밀도: measurements.md 6장)
+- 초해상도형 합성(Wronski 2019): 서브픽셀을 제대로 쓰는 길 (Bayer 평면 보간은 측정으로 기각)
+- 주파수 영역 Wiener 합성, Mertens 노출 융합, Camera2 NDK 포팅
+- MediaPipe 커스텀 op의 HTP Op Package: NPU 파티션 왕복(1노드) 제거
+- fp16 merge는 하지 않는다 (정밀도: measurements.md 7장)
 
 ## 참고
 Hasinoff et al. 2016 *Burst photography for high dynamic range and low-light imaging on mobile cameras* (HDR+) ·
