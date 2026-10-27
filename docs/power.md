@@ -147,4 +147,123 @@ cli, 화면 꺼짐, 세그·보케 없음, 4080×3072 × 8장. C55 코어: 0–3
   거버너의 이득은 지연 상한 유지(QoS)이고, 에너지 효과는 스로틀 구간이 더 긴(수백 장) 사용에서 다시 재야 한다.
 - 장당 gross(프리뷰 포함) 5.6–6.1 J 중 프리뷰가 ≈3.5 J (2.77 W × 1.28 s). E4와 같은 결론.
 
+## 4. 결과 — Xiaomi Mi Mix 4 [Mix4]
+
+조건: 케이블 분리, 비행기 모드 + Wi-Fi, 잔량 90→70%대, 실내. E1·E2 입력은 **C55에서 덤프한 같은 RAW 버스트**(`test0`, 4080×3072×8)를 push — 같은 입력으로 두 SoC 비교.
+샘플러: E1 r1–r2는 앱 `PowerService`, 그 뒤(E1 r3 GPU/CPU, E2, E3, E4)는 **shell 샘플러**(`ShellSampler`, 6장 참고). 같은 구간 동시 기록 비교: idle·GPU 구간 차이 0.1–0.3%,
+CPU 전부하 구간은 shell 쪽이 2.3% 낮음(실시간 전압 강하 8.07→7.87 V 반영, 앱 쪽은 방송 전압 고정) — 2.2절의 "부하 구간 1–2% 과대(추정)"를 실측으로 확인.
+**MIUI가 큰 코어 상한을 실험 내내 cpu4–6 2112 MHz, cpu7(X1) 2150 MHz로 묶어 둔다** (사양 2419 / 2995 MHz, `scaling_max_freq`). 즉 X1은 2.15 GHz로 돈 결과다.
+
+### E1. 세그멘테이션 백엔드 — 추론 1회당, 기기 전체(배터리) 기준
+
+| 백엔드 | **net mJ/회** | net W | ms/회 | 평균 W | idle W | CPU °C |
+|---|---|---|---|---|---|---|
+| NPU 요청 → **실제 CPU 폴백** (HTP v68은 fp16 미지원, 246개 연산 전부 검증 실패) | 33.6 (33.5–34.5) | 4.46 | 7.57 | 4.76 | 0.30 | 33→57 |
+| **GPU** (OpenCL Adreno 660, 246/246) | **7.55** (7.43–7.62) | 0.46 | 16.5 | 0.75 | 0.29 | 33→30 |
+| CPU (XNNPACK 4스레드) | 33.3 (32.8–33.5) | 4.36 | 7.62 | 4.66 | 0.30 | 33→58 |
+
+- "NPU"의 J/회·ms가 CPU와 같다 → 에너지로도 폴백이 확인된다. 델리게이트 생성은 성공("ok")하므로 **로그를 안 보면 NPU로 도는 줄 안다** (6장 1번).
+- Mix 4에서 가장 효율적인 경로는 GPU(7.55 mJ). C55 GPU(8.31 mJ)와 비슷하고, C55 NPU(4.43 mJ)보다 1.7배 많다.
+
+### E2. 합성 코어 배치 — burst 1회당, 기기 전체(배터리) 기준
+Mix 4 코어: 0–3 A55 1.80 GHz / 4–6 A78 (상한 2.11 GHz) / 7 X1 (상한 2.15 GHz).
+
+| 배치 | **net J/burst** | ms/burst | net W | CPU °C | 반복 |
+|---|---|---|---|---|---|
+| scalar 1스레드 (X1) | 2.29 (2.26–2.30) | 1426 | 1.61 | 36→41 | 3 |
+| NEON 리틀 4 (A55) | 1.68 (1.67–1.70) | 2104 | 0.80 | 31→34 | 3 |
+| NEON 미드 3 (A78) | 1.61 (1.61–1.61) | 314 | 5.12 | 43→63 | 2* |
+| **NEON X1 단독** | **1.52** (1.52–1.52) | 795 | 1.91 | 37→43 | 2* |
+| NEON 미드+X1 4 | 1.62 (1.62–1.64) | 258 | 6.28 | 42→71 | 3 |
+| NEON 미고정 8 | 1.61 (1.61–1.64) | **246** | 6.55 | 46→71 | 3 |
+
+\* r3 두 구간은 idle 기준선이 2.3–3.0 W(평소 0.30 W)로 배경 활동(APK 재설치 뒤 MIUI 백그라운드 작업 추정)에 오염 → 분석 규칙(idle > 같은 분석 idle 중앙값×2)으로 제외.
+
+- **C55와 결론이 다르다.** Mix 4는 NEON 배치 사이 차이가 1.52–1.68 J(±5%)로 작고, 가장 적은 것은 **X1 단독**(빠른 코어 1개로 0.8초).
+  리틀(A55) 4코어는 6.7배 느린데도 J는 10%만 많다. C55에서는 리틀(A510)이 빅보다 31% 더 썼다.
+  → "빨리 끝내고 쉬기 vs 효율 코어로 오래"의 답은 SoC(코어 미세구조·공정·L3/DRAM 공통 전력)마다 다르고, **같은 코드도 기기별로 재야 한다.**
+- 미드 3·미드+X1 4·미고정 8은 시간이 1/3인 대신 6–6.5 W로 70 °C까지 오른다 — 30초 연속 부하에서 에너지는 X1 단독과 6% 차이지만 발열 여유는 크게 다르다.
+- scalar → NEON (X1 1스레드): 1426 → 795 ms (−44%), 2.29 → 1.52 J (−34%).
+
 <!-- RESULTS -->
+
+## 5. 두 기기 비교 — 기기 전체(배터리) 기준
+
+> **SoC만 다른 게 아니다**: OS(One UI/Android 16 vs HyperOS/Android 14), 배터리(1셀 4.3 V vs 2셀 8.6 V), 화면 패널, 카메라 센서(50MP vs 108MP, 처리는 둘 다 4080×3072),
+> 커널 거버너·열 정책(Mix 4는 큰 코어 상한 2.11/2.15 GHz로 고정)까지 다르다. 아래 차이를 "Snapdragon 7 Gen 1 vs 888+" 차이로만 읽으면 안 된다.
+> E1·E2는 같은 입력(C55 RAW `test0`), 화면 꺼짐, idle 차분이라 비교 가능한 편이고, E3·E4는 각 기기 자체 촬영이다.
+
+| 항목 (net, 중앙값) | Galaxy C55 (SM7450) | Mi Mix 4 (SM8350) |
+|---|---|---|
+| 화면 꺼짐 idle | 0.22 W | 0.30 W |
+| E1 세그 NPU | **4.43 mJ / 1.99 ms** | 불가 (v68 fp16 미지원 → CPU 폴백 33.6 mJ) |
+| E1 세그 GPU | 8.31 mJ / 16.0 ms | **7.55 mJ** / 16.5 ms |
+| E1 세그 CPU 4스레드 | 40.9 mJ / 9.22 ms | 33.3 mJ / 7.62 ms |
+| E1 가장 효율적 경로 | NPU 4.43 mJ | GPU 7.55 mJ (1.7배) |
+| E2 scalar 1스레드 (최고 클럭 코어) | 2.61 J / 1519 ms | 2.29 J / 1426 ms |
+| E2 NEON 리틀 4 | 2.19 J / 1723 ms | 1.68 J / 2104 ms |
+| E2 NEON 최고 클럭 코어 1개 | 1.81 J / 932 ms (A710 2.40 GHz) | **1.52 J** / 795 ms (X1 2.15 GHz) |
+| E2 NEON 큰 코어 4 | **1.67 J** / 318 ms | 1.62 J / 258 ms (A78×3 + X1) |
+| E2 NEON 미고정 8 | 1.72 J / 295 ms | 1.61 J / 246 ms |
+| E2 최소 에너지 배치 | 빅 4 (race-to-idle) | X1 단독 (배치 간 차이 ±5%) |
+| E2 리틀 vs 최소 | +31% | +10% |
+
+## 6. Mi Mix 4 포팅 — 생긴 문제와 해결
+
+| # | 문제 | 원인 | 해결 / 상태 |
+|---|---|---|---|
+| 1 | **NPU가 조용히 CPU로 돈다** (델리게이트 생성 "ok", 추론 7.5 ms) | Hexagon 780 = HTP **v68은 fp16 미지원** (fp16 HTP는 v69+). float16 모델의 246개 연산 전부 `QnnBackend_validateOpConfig failed 0xc26` → TFLite가 전부 CPU로 실행 | `fetch_qnn.sh`가 v68·v69 Stub/Skel을 모두 패키징, `seg_litert.cc`가 `ro.soc.model`로 HTP 버전을 로그(SM8350→v68). INT8 시도: `tools/quantize_selfie_int8.py`(fp16 DEQUANTIZE 110개를 fp32 상수로 접고 SignatureDef 추가 → ai-edge-quantizer). a16w8 모델은 PC LiteRT 2.3에서 float 대비 마스크 IoU 0.96(실사 인물)·0.99(에뮬), 그러나 **기기 LiteRT 2.16이 로드 실패**("Input tensor lacks data": 양자화기가 연산 버전을 v1로 둔 채 int16 활성/int8 가중치 conv를 만듦). `seg_litert.cc`는 int8/int16 입출력·`kHtpQuantized`를 지원하게 고쳐 둠. **미해결** — 기기 런타임을 새 LiteRT로 올리거나 QNN 컨버터로 v68 컨텍스트 바이너리를 만들어야 한다. Mix 4 앱은 GPU 세그 사용 |
+| 2 | 앱 촬영 직후 **OutOfMemoryError** | 메인 카메라 RAW_SENSOR가 **6016×4512(27MP) 하나뿐** (108MP 센서 비닝). 8장 슬롯 434MB + 출력 버퍼가 Java 힙 512MB 초과 (Android의 `allocateDirect`는 Java 힙) | RAW가 16MP를 넘으면 가운데 **4080×3072로 잘라** 슬롯에 복사(오프셋 짝수 → CFA 위상 유지, `meta.txt`에 `crop`). C55와 픽셀 수가 같아 장당 에너지 비교도 같은 조건. 셔터→JPEG 1.50 s (캡처 806 ms: 27MP 판독) |
+| 3 | 연속 캡처(처리 없이)만 하면 OOM | 셔터마다 슬롯 8×25MB를 새로 할당. 평소에는 처리 400 ms가 GC 시간을 벌어줘 우연히 통과 (C55에서도 재현) | 연속 캡처 경로는 이전 슬롯 재사용 (`CaptureController.lastSlots`) |
+| 4 | 측정 앱이 7–16분 뒤 죽음 | **MIUI PowerKeeper `AutoPowerKill`**: 화면 꺼진 뒤 포그라운드 서비스도 force-stop (`dumpsys activity exit-info`: "stop dev.burstpipe due to AutoPowerKill"). 앱 배터리 설정 "제한 없음"을 켜도 재발 | 샘플러를 **shell uid 프로세스로** (`app_process` + `ShellSampler`): `IBatteryPropertiesRegistrar.getProperty(CURRENT_NOW)`(= BatteryManager와 같은 값) + shell이 읽을 수 있는 `vbat` thermal zone(실시간 전압 × 셀 수 2), `IPowerManager`로 shell PARTIAL wake lock. 앱 샘플러와 0.1–0.3% 일치 |
+| 5 | 백그라운드 서비스가 포그라운드가 못 됨 | MIUI 기본 `RUN_ANY_IN_BACKGROUND=ignore` → "startForeground() not allowed due to bg restriction" | `cmd appops set … RUN_ANY_IN_BACKGROUND allow` + 절전 예외 |
+| 6 | 깨운 화면이 10초 만에 꺼짐 | 스와이프 keyguard가 떠 있으면 `activityTimeoutWM=10000` | `wm dismiss-keyguard` |
+| 7 | adb·설치·입력 | 개발자 옵션 "USB를 통해 설치", "USB 디버깅(보안 설정)" 필요. Windows에서는 libusbK 드라이버라 `ADB_LIBUSB=1` | 사용자 설정 + 래퍼 |
+
+C55에서 찾았던 기기 전용 문제 6개가 Mix 4에서도 나오는가:
+
+| C55 문제 | Mix 4 |
+|---|---|
+| 결과 CCM이 단위행렬 | **재현** — `ccm_source forward_matrix`로 ForwardMatrix(D65) CCM 사용 (기존 코드가 그대로 처리) |
+| 노이즈 프로파일 | 타당한 값 (a=2.4e-3, b=1.8e-5 @ ISO 1600) → HAL 값 사용. AVD처럼 엉터리는 아님 |
+| 센서 방향 | 90° (C55와 같음), 기존 정립 회전으로 처리. CFA는 다름: Mix 4 **GRBG**, C55 GBRG — 메타로 처리 |
+| GPU 델리게이트 스레드 친화성 | 재현 없음 (전용 소유 스레드가 이미 있음). 앱 GPU 세그 init 1.7 s, 추론 8.6 ms |
+| 벤더 라이브러리 네임스페이스 (`uses-native-library`) | 같은 매니페스트로 동작 (`uses_libraries=libOpenCL.so:libcdsprpc.so` 로드 로그) |
+| perf 제약 (삼성 user 빌드: 커널 샘플·소프트웨어 이벤트 금지) | **없음** — `perf_event_paranoid=-1`, `cpu-cycles:k`·`task-clock` 모두 허용 |
+
+추가로 Mix 4는 ISO 상한이 1600(C55 6400)이라 저조도 버스트가 어두워진다(노출 정책은 그대로). 앱 GPU 세그·보케·JPEG까지 끝까지 동작 확인.
+
+## 7. 한계
+- **기기 전체(배터리) 전력**이다. 레일별(SoC·DDR·카메라) 분해가 없어 "NPU 칩 전력"이 아니라 "NPU로 돌릴 때 기기 전체가 더 쓰는 전력"이다. idle 차분이 화면·모뎀·상주 서비스를 지우지만 DRAM·L3·전원 레일 효율(PMIC)은 작업 쪽에 포함된다.
+- 연료게이지 갱신 250 ms, BatteryManager 전류는 게이지 내부 평균값 → **30초 이상 반복한 평균**만 의미가 있다. 2 ms 추론 1회, 셔터 1회 같은 단발 사건은 직접 못 재고 반복 평균으로 나눈 값이다.
+- 전압: C55·Mix 4 E1(r1–r2)의 앱 샘플러는 방송 전압(수 분 간격 갱신)이라 전부하 구간 에너지가 **+2.3% 과대**(Mix 4 동시 측정). Mix 4 나머지는 실시간 `vbat`. 두 기기 비교에서 수 % 차이는 해석하지 않는다.
+- 30초 연속 부하는 **스로틀을 포함**한다(C55 빅 코어 30초 안에 2361→2054 MHz). 식은 상태의 단발 셔터 에너지는 표보다 작을 것이다(추정).
+- 카메라 프리뷰가 켜진 앱 실험에서 CPU 최고 온도 센서가 1초 안에 수 °C 흔들려 "시작 +1 °C" 쿨다운 기준이 사실상 상한(2–15분)으로 동작했다. 순서 번갈아·직전 idle 차분으로 편향을 줄였지만 단계 간 온도는 같지 않다.
+- 반복: E1·E2·E4 3회, **E3 2회**(배터리·시간 때문에 줄임). Mix 4 E2 미드3·X1 단독은 r3가 배경 활동으로 제외돼 2회.
+- 잔량: C55 E1이 88%에서 시작(원칙 30–90% 안), 실험 순서상 E3가 가장 낮은 잔량(52→40%)에서 돌았다. 잔량에 따른 전압 차이(4.3→3.9 V)는 P=V×I로 반영되지만 게이지 오차는 잔량 구간마다 다를 수 있다.
+- Mix 4 큰 코어 상한이 MIUI에 의해 2.11/2.15 GHz로 묶인 상태의 결과다. 성능 모드에서는 다를 수 있다(미측정).
+- C55 E3의 거버너 효과(−1%)는 반복 편차 안이다. "거버너가 에너지를 줄인다"는 주장은 이 데이터로 못 한다.
+
+## 8. 재현
+
+```bash
+# 빌드 (cli NEON / scalar, 앱)
+NDK=... bash scripts/build_arm64.sh && NO_NEON=1 NDK=... bash scripts/build_arm64.sh
+QAIRT_SDK=... bash scripts/fetch_qnn.sh          # v68 + v69 Stub/Skel
+cd android && ./gradlew assembleDebug && cd ..
+# 케이블 연결 상태에서 무선 adb 준비 → 케이블 분리
+adb tcpip 5555 && adb connect <phone-ip>:5555
+# 샘플러 검증 (단위·부호·갱신 주기) → results/power/<dev>/calibration.json
+python tools/power_analyze.py validate --csv samples.csv --records <val dir> --out results/power/<dev>/calibration.json
+# cli 실험 (E1 세그, E2 코어 배치). MIUI는 SAMPLER=shell
+ADB="adb -s <ip>:5555" bash scripts/power_cli.sh c55 E1 3
+ADB="adb -s <ip>:5555" SAMPLER=shell bash scripts/power_cli.sh mix4 E2 3
+# 앱 실험 (E4 단계별, E3 150연속)
+ADB="adb -s <ip>:5555" DELEGATE=npu COOL_MAX=120 bash scripts/power_app.sh c55 E4 3
+ADB="adb -s <ip>:5555" DELEGATE=gpu SAMPLER=shell bash scripts/power_app.sh mix4 E3 2
+# 표·세부
+python tools/power_report.py c55 mix4
+python tools/power_e3.py results/power/<dev>/raw/<E3 run> --calib results/power/<dev>/calibration.json
+```
+cli: `--seconds S`(웜업 1회 뒤 S초 이상 반복), `--seg-only`, `--idle S`, `--power-json w.json --label L`.
+앱: `--es action pstage --es stage idle|capture|plain|portrait|seg|jpeg --ei seconds 30 --es label L`, `--es action stress --ei count 150 --es policy off|thermal --ez noseg true --es label L`.

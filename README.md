@@ -33,6 +33,17 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
 
+### 전력·에너지 (기기 전체(배터리) 기준, idle 차분 net, 30초+ 반복 구간) — [docs/power.md](docs/power.md)
+
+| 항목 | Galaxy C55 (SD 7 Gen 1) | Mi Mix 4 (SD 888+) |
+|---|---|---|
+| 세그 추론 1회 NPU / GPU / CPU | **4.4** / 8.3 / 41 mJ | 불가(HTP v68 fp16 미지원) / **7.6** / 33 mJ |
+| 합성 burst 1회 (12.5MP×8) 최소 배치 | 빅 4코어 **1.67 J** (318 ms) | X1 단독 **1.52 J** (795 ms) |
+| 같은 합성, 리틀 4코어 | 2.19 J (+31%) | 1.68 J (+10%) |
+| 인물모드 1장 처리(합성+세그+보케) | 1.53 J, 프리뷰 유지는 2.76 W | (docs/power.md) |
+
+측정 도구: 앱 `PowerService`(BatteryManager) / shell `ShellSampler`(app_process, MIUI AutoPowerKill 회피) + cli·앱 구간 기록 → `tools/power_analyze.py`.
+
 ![C55 세그 마스크](docs/img/c55_seg_mask.jpg)
 *[C55] 인물 세그 마스크 (NPU/GPU 추론 → 가이디드 필터 정제). 센서 방향 보정 후 전신이 잡힌다*
 
