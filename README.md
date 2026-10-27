@@ -40,7 +40,7 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 | 세그 추론 1회 NPU / GPU / CPU | **4.4** / 8.3 / 41 mJ | 불가(HTP v68 fp16 미지원) / **7.6** / 33 mJ |
 | 합성 burst 1회 (12.5MP×8) 최소 배치 | 빅 4코어 **1.67 J** (318 ms) | X1 단독 **1.52 J** (795 ms) |
 | 같은 합성, 리틀 4코어 | 2.19 J (+31%) | 1.68 J (+10%) |
-| 인물모드 1장 처리(합성+세그+보케) | 1.53 J, 프리뷰 유지는 2.76 W | (docs/power.md) |
+| 인물모드 1장 처리(합성+세그+보케) | 1.53 J, 프리뷰 유지는 2.76 W | 1.51 J, 프리뷰 유지는 3.14 W |
 
 측정 도구: 앱 `PowerService`(BatteryManager) / shell `ShellSampler`(app_process, MIUI AutoPowerKill 회피) + cli·앱 구간 기록 → `tools/power_analyze.py`.
 
