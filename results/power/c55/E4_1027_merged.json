@@ -7,6 +7,161 @@
  "basis": "기기 전체(배터리) 기준 — SoC 단독 전력 아님",
  "windows": [
   {
+   "label": "E4_r1_capture",
+   "mode": "app_capture",
+   "seconds": 30.382,
+   "iters": 40,
+   "gross_j": 76.5307,
+   "avg_w": 2.5189,
+   "ms_per_iter": 759.561842175,
+   "iter_ms_median": 862.0,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    32.0,
+    32.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 608,
+   "voltage_mv": [
+    3970,
+    3960
+   ],
+   "cc_gross_j": 105.563,
+   "args": null,
+   "idle_w": 2.3806,
+   "net_j": 4.2022,
+   "net_w": 0.1383,
+   "net_j_per_iter": 0.10506,
+   "gross_j_per_iter": 1.91327,
+   "idle_plugged": false
+  },
+  {
+   "label": "E4_r1_plain",
+   "mode": "app_plain",
+   "seconds": 30.107,
+   "iters": 68,
+   "gross_j": 154.8613,
+   "avg_w": 5.1437,
+   "ms_per_iter": 442.7509511176471,
+   "iter_ms_median": 430.389635,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    32.0,
+    32.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 602,
+   "voltage_mv": [
+    3960,
+    3960
+   ],
+   "cc_gross_j": 154.621,
+   "args": null,
+   "idle_w": 2.0659,
+   "net_j": 92.6631,
+   "net_w": 3.0778,
+   "net_j_per_iter": 1.36269,
+   "gross_j_per_iter": 2.27737,
+   "idle_plugged": false
+  },
+  {
+   "label": "E4_r1_portrait",
+   "mode": "app_portrait",
+   "seconds": 30.527,
+   "iters": 56,
+   "gross_j": 157.8339,
+   "avg_w": 5.1703,
+   "ms_per_iter": 545.1209019642857,
+   "iter_ms_median": 546.516927,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    32.0,
+    32.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 610,
+   "voltage_mv": [
+    3960,
+    3960
+   ],
+   "cc_gross_j": 105.423,
+   "args": null,
+   "idle_w": 2.1207,
+   "net_j": 93.0958,
+   "net_w": 3.0496,
+   "net_j_per_iter": 1.66243,
+   "gross_j_per_iter": 2.81846,
+   "idle_plugged": false
+  },
+  {
+   "label": "E4_r1_seg",
+   "mode": "app_seg",
+   "seconds": 30.005,
+   "iters": 4385,
+   "gross_j": 102.0206,
+   "avg_w": 3.4002,
+   "ms_per_iter": 6.842582047890535,
+   "iter_ms_median": 5.946823,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    34.0,
+    34.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    3948,
+    3948
+   ],
+   "cc_gross_j": 84.083,
+   "args": null,
+   "idle_w": 2.2368,
+   "net_j": 34.9061,
+   "net_w": 1.1634,
+   "net_j_per_iter": 0.00796,
+   "gross_j_per_iter": 0.02327,
+   "idle_plugged": false
+  },
+  {
+   "label": "E4_r1_jpeg",
+   "mode": "app_jpeg",
+   "seconds": 30.021,
+   "iters": 174,
+   "gross_j": 113.3755,
+   "avg_w": 3.7765,
+   "ms_per_iter": 172.5366112241379,
+   "iter_ms_median": 157.976093,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    34.0,
+    34.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    3948,
+    3948
+   ],
+   "cc_gross_j": 140.138,
+   "args": null,
+   "idle_w": 2.8023,
+   "net_j": 29.2466,
+   "net_w": 0.9742,
+   "net_j_per_iter": 0.16808,
+   "gross_j_per_iter": 0.65158,
+   "idle_plugged": false
+  },
+  {
    "label": "E4_r2_jpeg",
    "mode": "app_jpeg",
    "seconds": 30.114,
@@ -318,78 +473,83 @@
   }
  ],
  "summary": {
-  "E4_jpeg": {
-   "n": 2,
-   "net_j_per_iter": 0.19322,
-   "net_w": 0.9276,
-   "avg_w": 3.7449,
-   "idle_w": 2.8173,
-   "ms_per_iter": 209.74848,
-   "iter_ms_median": 218.00784,
-   "iters": 144.0,
+  "E4_capture": {
+   "n": 3,
+   "net_j_per_iter": 0.09838,
+   "net_w": 0.1383,
+   "avg_w": 2.8783,
+   "idle_w": 2.7603,
+   "ms_per_iter": 517.55525,
+   "iter_ms_median": 518.0,
+   "iters": 58,
    "net_j_per_iter_all": [
-    0.21086,
-    0.17558
-   ],
-   "any_plugged": false
-  },
-  "E4_seg": {
-   "n": 2,
-   "net_j_per_iter": 0.00788,
-   "net_w": 1.06705,
-   "avg_w": 3.8449,
-   "idle_w": 2.77785,
-   "ms_per_iter": 7.39235,
-   "iter_ms_median": 6.81156,
-   "iters": 4060.0,
-   "net_j_per_iter_all": [
-    0.00832,
-    0.00744
-   ],
-   "any_plugged": false
-  },
-  "E4_portrait": {
-   "n": 2,
-   "net_j_per_iter": 1.4893,
-   "net_w": 2.53265,
-   "avg_w": 5.30645,
-   "idle_w": 2.7738,
-   "ms_per_iter": 588.47935,
-   "iter_ms_median": 607.80492,
-   "iters": 51.5,
-   "net_j_per_iter_all": [
-    1.52527,
-    1.45334
+    0.10506,
+    0.04887,
+    0.09838
    ],
    "any_plugged": false
   },
   "E4_plain": {
-   "n": 2,
-   "net_j_per_iter": 1.1999,
-   "net_w": 2.4926,
-   "avg_w": 5.2826,
-   "idle_w": 2.79,
-   "ms_per_iter": 481.52506,
-   "iter_ms_median": 499.14518,
-   "iters": 63.0,
+   "n": 3,
+   "net_j_per_iter": 1.21021,
+   "net_w": 2.5469,
+   "avg_w": 5.2108,
+   "idle_w": 2.7725,
+   "ms_per_iter": 475.16453,
+   "iter_ms_median": 494.55302,
+   "iters": 64,
    "net_j_per_iter_all": [
+    1.36269,
     1.1896,
     1.21021
    ],
    "any_plugged": false
   },
-  "E4_capture": {
-   "n": 2,
-   "net_j_per_iter": 0.07362,
-   "net_w": 0.14225,
-   "avg_w": 2.91435,
-   "idle_w": 2.7721,
-   "ms_per_iter": 517.52754,
-   "iter_ms_median": 518.0,
-   "iters": 58.0,
+  "E4_portrait": {
+   "n": 3,
+   "net_j_per_iter": 1.52527,
+   "net_w": 2.6389,
+   "avg_w": 5.1955,
+   "idle_w": 2.7691,
+   "ms_per_iter": 577.98564,
+   "iter_ms_median": 601.22047,
+   "iters": 52,
    "net_j_per_iter_all": [
-    0.04887,
-    0.09838
+    1.66243,
+    1.52527,
+    1.45334
+   ],
+   "any_plugged": false
+  },
+  "E4_seg": {
+   "n": 3,
+   "net_j_per_iter": 0.00796,
+   "net_w": 1.1445,
+   "avg_w": 3.7878,
+   "idle_w": 2.7575,
+   "ms_per_iter": 7.26792,
+   "iter_ms_median": 6.74458,
+   "iters": 4128,
+   "net_j_per_iter_all": [
+    0.00796,
+    0.00832,
+    0.00744
+   ],
+   "any_plugged": false
+  },
+  "E4_jpeg": {
+   "n": 3,
+   "net_j_per_iter": 0.17558,
+   "net_w": 0.9742,
+   "avg_w": 3.7765,
+   "idle_w": 2.814,
+   "ms_per_iter": 199.43269,
+   "iter_ms_median": 215.91464,
+   "iters": 151,
+   "net_j_per_iter_all": [
+    0.16808,
+    0.21086,
+    0.17558
    ],
    "any_plugged": false
   }
