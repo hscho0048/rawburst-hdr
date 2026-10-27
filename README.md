@@ -35,7 +35,7 @@ RAW 버스트 HDR(HDR+ 방식 정렬·강건 합성) + 온디바이스 세그멘
 
 전체 표와 해석: [docs/measurements.md](docs/measurements.md)
 
-### 전력·에너지 (기기 전체(배터리) 기준, idle 차분 net, 30초+ 반복 구간) — [docs/power.md](docs/power.md)
+### 전력·에너지 (기기 전체(배터리) 기준, idle 차분 net, 30초+ 반복 구간) — [docs/power.md](docs/power.md) ([English](docs/power.en.md))
 
 | 항목 | Galaxy C55 (SD 7 Gen 1) | Mi Mix 4 (SD 888+) |
 |---|---|---|
@@ -186,7 +186,7 @@ Labels: **PC-emu** = x64 PC with the sensor emulator (algorithm quality, not dev
 
 Full tables and discussion (Korean): [docs/measurements.md](docs/measurements.md)
 
-### Power and energy — [docs/power.md](docs/power.md), issue log [docs/power_issues.md](docs/power_issues.md) (Korean)
+### Power and energy — [docs/power.en.md](docs/power.en.md), issue log [docs/power_issues.en.md](docs/power_issues.en.md)
 
 Whole-device (battery) power with the idle baseline subtracted (net), measured over windows of at least 30 s of repeated work, median of 3 runs (E3: 2).
 Neither phone exposes per-rail power (no ODPM), so these numbers include DRAM, power-delivery losses and so on, not just the SoC.
@@ -242,7 +242,7 @@ Segmentation takes a downscaled frame 0 and runs in parallel with alignment and 
 12. **(C55) Model surgery**: custom op → standard `TRANSPOSE_CONV`, NPU partitions 3 → 1 (same mask).
 13. **(PC-emu/C55) Wiener merge**: frequency-domain shrinkage fixes sub-pixel edge blur (edge RMSE 7.4 → 3.2). `std::complex` multiplication was compiling to `__mulsc3` calls; removing that took it from 5.4 to 0.99 s.
 14. The alignment test texture from the design notes was periodic and caused false matches at coarse levels → replaced with non-periodic random blocks.
-15. **(Mix 4 port)** fp16 model silently on CPU (HTP v68) → INT8 model; 27 MP-only RAW caused a Java heap OOM → centre-crop to 4080×3072; MIUI AutoPowerKill and background limits killed the sampler → shell-uid sampler with its own wake lock. Details in [docs/power_issues.md](docs/power_issues.md).
+15. **(Mix 4 port)** fp16 model silently on CPU (HTP v68) → INT8 model; 27 MP-only RAW caused a Java heap OOM → centre-crop to 4080×3072; MIUI AutoPowerKill and background limits killed the sampler → shell-uid sampler with its own wake lock. Details in [docs/power_issues.en.md](docs/power_issues.en.md).
 
 ### Build and run
 
@@ -286,7 +286,7 @@ emu/                     sensor emulator (burstpipe_emu)
 android/                 Gradle app (Kotlin Camera2 + jni.cc + ndk_camera.cc + PowerService/ShellSampler)
 tools/                   analysis scripts, incl. power_analyze, power_report, power_e3, quantize_selfie_int8 (.py)
 scripts/                 build / test / device benchmark / power_cli, power_app runners
-docs/                    measurements.md, power.md, power_issues.md, hardware_test.md, img/
+docs/                    measurements.md, power.md / power.en.md, power_issues.md / power_issues.en.md, hardware_test.md, img/
 results/power/           power analysis JSONs (raw 50 ms samples are kept outside the repo)
 ```
 
