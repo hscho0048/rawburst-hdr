@@ -161,8 +161,12 @@ CPU 전부하 구간은 shell 쪽이 2.3% 낮음(실시간 전압 강하 8.07→
 | NPU 요청 → **실제 CPU 폴백** (HTP v68은 fp16 미지원, 246개 연산 전부 검증 실패) | 33.6 (33.5–34.5) | 4.46 | 7.57 | 4.76 | 0.30 | 33→57 |
 | **GPU** (OpenCL Adreno 660, 246/246) | **7.55** (7.43–7.62) | 0.46 | 16.5 | 0.75 | 0.29 | 33→30 |
 | CPU (XNNPACK 4스레드) | 33.3 (32.8–33.5) | 4.36 | 7.62 | 4.66 | 0.30 | 33→58 |
+| **NPU INT8** (HTP v68, a8w8, **136/136 노드 1 파티션**, LiteRT 1.4.2) | **3.88** (3.85–3.91) | 0.93 | 4.15 | 1.33 | 0.40 | 37→35 |
 
-- "NPU"의 J/회·ms가 CPU와 같다 → 에너지로도 폴백이 확인된다. 델리게이트 생성은 성공("ok")하므로 **로그를 안 보면 NPU로 도는 줄 안다** (6장 1번).
+- INT8 행: 2026-10-28 추가 측정(잔량 90%, 같은 절차, 2회 — r1은 idle 3.17 W로 배경 활동 오염, 자동 제외). **GPU의 절반 에너지**, C55 fp16 NPU(4.43 mJ)보다 약간 적다.
+  ms/회가 빠른 단발 시험(1.3 ms)보다 큰 것은 화면 꺼짐 상태 CPU 클럭(~850 MHz)에서 입력 양자화·출력 역양자화(CPU)가 포함되기 때문.
+  **단, INT8 마스크는 float과 다르다**: 실기기 7장면 중 인물 IoU 0.86, 작은 전경 1장면 0.0003, 밝은 패널 1장면 0.55 (`docs/power_issues.md` 3번). 정확도를 맞추기 전에는 제품 경로로 쓰지 않는다.
+- "NPU"(fp16)의 J/회·ms가 CPU와 같다 → 에너지로도 폴백이 확인된다. 델리게이트 생성은 성공("ok")하므로 **로그를 안 보면 NPU로 도는 줄 안다** (6장 1번).
 - Mix 4에서 가장 효율적인 경로는 GPU(7.55 mJ). C55 GPU(8.31 mJ)와 비슷하고, C55 NPU(4.43 mJ)보다 1.7배 많다.
 
 ### E2. 합성 코어 배치 — burst 1회당, 기기 전체(배터리) 기준
@@ -227,10 +231,10 @@ C55와 같은 절차(매 회 화면 꺼짐 기준 34 °C + 1 °C까지 식힘, 2
 | 항목 (net, 중앙값) | Galaxy C55 (SM7450) | Mi Mix 4 (SM8350) |
 |---|---|---|
 | 화면 꺼짐 idle | 0.22 W | 0.30 W |
-| E1 세그 NPU | **4.43 mJ / 1.99 ms** | 불가 (v68 fp16 미지원 → CPU 폴백 33.6 mJ) |
+| E1 세그 NPU | **4.43 mJ / 1.99 ms** (fp16) | fp16 불가(CPU 폴백 33.6 mJ) → **INT8 3.88 mJ / 4.15 ms** (정확도 차이 있음) |
 | E1 세그 GPU | 8.31 mJ / 16.0 ms | **7.55 mJ** / 16.5 ms |
 | E1 세그 CPU 4스레드 | 40.9 mJ / 9.22 ms | 33.3 mJ / 7.62 ms |
-| E1 가장 효율적 경로 | NPU 4.43 mJ | GPU 7.55 mJ (1.7배) |
+| E1 가장 효율적 경로 | NPU fp16 4.43 mJ | float 모델은 GPU 7.55 mJ / INT8 NPU 3.88 mJ |
 | E2 scalar 1스레드 (최고 클럭 코어) | 2.61 J / 1519 ms | 2.29 J / 1426 ms |
 | E2 NEON 리틀 4 | 2.19 J / 1723 ms | 1.68 J / 2104 ms |
 | E2 NEON 최고 클럭 코어 1개 | 1.81 J / 932 ms (A710 2.40 GHz) | **1.52 J** / 795 ms (X1 2.15 GHz) |
@@ -251,7 +255,7 @@ C55와 같은 절차(매 회 화면 꺼짐 기준 34 °C + 1 °C까지 식힘, 2
 
 | # | 문제 | 원인 | 해결 / 상태 |
 |---|---|---|---|
-| 1 | **NPU가 조용히 CPU로 돈다** (델리게이트 생성 "ok", 추론 7.5 ms) | Hexagon 780 = HTP **v68은 fp16 미지원** (fp16 HTP는 v69+). float16 모델의 246개 연산 전부 `QnnBackend_validateOpConfig failed 0xc26` → TFLite가 전부 CPU로 실행 | `fetch_qnn.sh`가 v68·v69 Stub/Skel을 모두 패키징, `seg_litert.cc`가 `ro.soc.model`로 HTP 버전을 로그(SM8350→v68). INT8 시도: `tools/quantize_selfie_int8.py`(fp16 DEQUANTIZE 110개를 fp32 상수로 접고 SignatureDef 추가 → ai-edge-quantizer). a16w8 모델은 PC LiteRT 2.3에서 float 대비 마스크 IoU 0.96(실사 인물)·0.99(에뮬), 그러나 **기기 LiteRT 2.16이 로드 실패**("Input tensor lacks data": 양자화기가 연산 버전을 v1로 둔 채 int16 활성/int8 가중치 conv를 만듦). `seg_litert.cc`는 int8/int16 입출력·`kHtpQuantized`를 지원하게 고쳐 둠. **미해결** — 기기 런타임을 새 LiteRT로 올리거나 QNN 컨버터로 v68 컨텍스트 바이너리를 만들어야 한다. Mix 4 앱은 GPU 세그 사용 |
+| 1 | **NPU가 조용히 CPU로 돈다** (델리게이트 생성 "ok", 추론 7.5 ms) | Hexagon 780 = HTP **v68은 fp16 미지원** (fp16 HTP는 v69+). float16 모델의 246개 연산 전부 `QnnBackend_validateOpConfig failed 0xc26` → TFLite가 전부 CPU로 실행 | **(10-28 갱신) INT8 a8w8 모델 + LiteRT 1.4.2로 136/136 노드·1 파티션 NPU 위임, 3.88 mJ / 4.1 ms. 정확도 문제는 남음 — `docs/power_issues.md` 1–3번.** 아래는 첫 시도 기록: `fetch_qnn.sh`가 v68·v69 Stub/Skel을 모두 패키징, `seg_litert.cc`가 `ro.soc.model`로 HTP 버전을 로그(SM8350→v68). INT8 시도: `tools/quantize_selfie_int8.py`(fp16 DEQUANTIZE 110개를 fp32 상수로 접고 SignatureDef 추가 → ai-edge-quantizer). a16w8 모델은 PC LiteRT 2.3에서 float 대비 마스크 IoU 0.96(실사 인물)·0.99(에뮬), 그러나 **기기 LiteRT 2.16이 로드 실패**("Input tensor lacks data": 양자화기가 연산 버전을 v1로 둔 채 int16 활성/int8 가중치 conv를 만듦). `seg_litert.cc`는 int8/int16 입출력·`kHtpQuantized`를 지원하게 고쳐 둠. **미해결** — 기기 런타임을 새 LiteRT로 올리거나 QNN 컨버터로 v68 컨텍스트 바이너리를 만들어야 한다. Mix 4 앱은 GPU 세그 사용 |
 | 2 | 앱 촬영 직후 **OutOfMemoryError** | 메인 카메라 RAW_SENSOR가 **6016×4512(27MP) 하나뿐** (108MP 센서 비닝). 8장 슬롯 434MB + 출력 버퍼가 Java 힙 512MB 초과 (Android의 `allocateDirect`는 Java 힙) | RAW가 16MP를 넘으면 가운데 **4080×3072로 잘라** 슬롯에 복사(오프셋 짝수 → CFA 위상 유지, `meta.txt`에 `crop`). C55와 픽셀 수가 같아 장당 에너지 비교도 같은 조건. 셔터→JPEG 1.50 s (캡처 806 ms: 27MP 판독) |
 | 3 | 연속 캡처(처리 없이)만 하면 OOM | 셔터마다 슬롯 8×25MB를 새로 할당. 평소에는 처리 400 ms가 GC 시간을 벌어줘 우연히 통과 (C55에서도 재현) | 연속 캡처 경로는 이전 슬롯 재사용 (`CaptureController.lastSlots`) |
 | 4 | 측정 앱이 7–16분 뒤 죽음 | **MIUI PowerKeeper `AutoPowerKill`**: 화면 꺼진 뒤 포그라운드 서비스도 force-stop (`dumpsys activity exit-info`: "stop dev.burstpipe due to AutoPowerKill"). 앱 배터리 설정 "제한 없음"을 켜도 재발 | 샘플러를 **shell uid 프로세스로** (`app_process` + `ShellSampler`): `IBatteryPropertiesRegistrar.getProperty(CURRENT_NOW)`(= BatteryManager와 같은 값) + shell이 읽을 수 있는 `vbat` thermal zone(실시간 전압 × 셀 수 2), `IPowerManager`로 shell PARTIAL wake lock. 앱 샘플러와 0.1–0.3% 일치 |
@@ -322,7 +326,8 @@ Mix4: Xiaomi Mi Mix 4, Snapdragon 888+ (SM8350, HTP v68), Android 14 / HyperOS 1
 [E1 세그 추론 1회당 net — selfie_segmenter 256², 같은 입력]
               NPU              GPU              CPU(XNNPACK 4T)
 C55        4.43 mJ / 1.99 ms  8.31 mJ / 16.0 ms  40.9 mJ / 9.2 ms
-Mix4       불가(v68 fp16 미지원→CPU 폴백 33.6 mJ)  7.55 mJ / 16.5 ms  33.3 mJ / 7.6 ms
+Mix4       fp16 불가(v68→CPU 폴백 33.6 mJ)  7.55 mJ / 16.5 ms  33.3 mJ / 7.6 ms
+           INT8 3.88 mJ / 4.15 ms (136/136 노드, LiteRT 1.4.2; 마스크 정확도 장면별 차이 — 인물 IoU 0.86)
 
 [E2 합성 burst 1회(4080×3072×8) net — 같은 C55 RAW 입력]
               scalar 1T   NEON little4   NEON top-core 1   NEON big4      NEON unpinned8
@@ -341,7 +346,8 @@ Mix4       2.33 J (1282)      2.34 J (1277)   카메라 중 OS가 처음부터 1
 → 장당 기기 에너지에서 프리뷰 유지가 처리보다 크다.
 
 [Mix 4 포팅 이슈]
-1. HTP v68 fp16 미지원 → 246개 연산 전부 검증 실패, 델리게이트는 "ok"인데 CPU로 실행 (로그·에너지로 확인). INT8/a16w8 모델 생성(PC IoU 0.96)했으나 기기 LiteRT 2.16 로드 실패 — 미해결, GPU 사용
+1. HTP v68 fp16 미지원 → 246개 연산 전부 검증 실패, 델리게이트는 "ok"인데 CPU로 실행 (로그·에너지로 확인).
+   INT8 a8w8 모델(실기기 보정) + LiteRT 1.4.2 → 136/136 노드 NPU, 3.88 mJ(GPU의 절반). 기기 LiteRT 2.16은 이 모델 로드 실패. 남은 문제: per-tensor INT8 정확도(SE 게이팅 경로)
 2. RAW가 27MP(6016×4512) 하나뿐 → 8장 슬롯이 Java 힙 초과(OOM) → 가운데 4080×3072 자르기 (캡처 에너지는 C55의 6배로 남음)
 3. 연속 캡처 시 슬롯 재할당 OOM (C55에서도 재현) → 슬롯 재사용
 4. MIUI AutoPowerKill이 화면 꺼진 7–16분 뒤 포그라운드 서비스까지 종료 → shell uid 샘플러(app_process + IBatteryPropertiesRegistrar + IPowerManager wake lock)
@@ -351,5 +357,5 @@ Mix4       2.33 J (1282)      2.34 J (1277)   카메라 중 OS가 처음부터 1
 [이력서용 한 줄 후보]
 - 두 Snapdragon 기기(7 Gen 1 / 888+)에서 배터리 전류 샘플러와 idle 차분 측정 체계를 만들어 RAW 버스트 HDR·인물모드 파이프라인의 단계별 에너지를 실측(세그 추론 NPU 4.4 mJ vs GPU 8.3 mJ vs CPU 41 mJ).
 - 합성 코어 배치별 에너지를 재서 race-to-idle이 SoC마다 다름을 확인: 7 Gen 1은 빅 코어가 리틀보다 24% 적게, 888+는 X1 단독이 최소이고 배치 간 차이 ±5%.
-- Mi Mix 4 포팅에서 HTP v68 fp16 미지원으로 NPU가 조용히 CPU 폴백(C55 NPU 대비 회당 에너지 7.6배)되는 것, 27MP RAW OOM, MIUI AutoPowerKill로 측정 서비스가 죽는 문제를 찾아 각각 진단·우회(shell 권한 샘플러).
+- Mi Mix 4 포팅에서 HTP v68 fp16 미지원으로 NPU가 조용히 CPU 폴백(33.6 mJ)되는 것을 위임 노드 수와 에너지로 찾고, INT8 양자화로 136/136 노드를 NPU에 올려 회당 3.9 mJ(8.7배 절감)로 낮춤. 27MP RAW OOM, MIUI AutoPowerKill도 진단·우회.
 ```

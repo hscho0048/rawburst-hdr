@@ -15,6 +15,7 @@ BURST=${BURST:-test0}
 # SAMPLER=app(기본, 앱 PowerService) | shell(app_process, shell uid — MIUI AutoPowerKill 대상 아님. Mix 4는 이것)
 SAMPLER=${SAMPLER:-app}
 MODEL=${MODEL:-selfie_segmenter_std.tflite}
+# LIBDIR=/data/local/tmp/bp/l142 : 다른 LiteRT .so를 먼저 찾게 (INT8 모델은 LiteRT 1.4.2 필요, 2.16.1은 로드 실패)
 D=/data/local/tmp/bp
 RUN=${RUN:-${EXP}_$(date +%m%d_%H%M)}
 OUT=results/power/$DEV
@@ -57,7 +58,7 @@ $ADB shell "test -f $D/$MODEL" || $ADB push "models/$MODEL" $D/ >/dev/null
 mkdir -p out; R=out/power_run_$RUN.sh
 {
   echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; mkdir -p \$P; cd \$D; COOL_MAX=${COOL_MAX:-600}"
-  echo "export LD_LIBRARY_PATH=\$D ADSP_LIBRARY_PATH=\"\$D;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp\""
+  echo "export LD_LIBRARY_PATH=${LIBDIR:+$LIBDIR:}\$D ADSP_LIBRARY_PATH=\"\$D;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp\""
   cat <<'EOS'
 cpu_t() { m=0; for z in /sys/class/thermal/thermal_zone*; do case "$(cat $z/type 2>/dev/null)" in *cpu*) v=$(cat $z/temp 2>/dev/null); [ "$v" -gt "$m" ] 2>/dev/null && [ "$v" -lt 150000 ] && m=$v;; esac; done; echo $m; }
 log() { echo "$(cut -d' ' -f1 /proc/uptime) $*" >> $P/status.log; }

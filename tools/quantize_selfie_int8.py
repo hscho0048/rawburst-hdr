@@ -26,10 +26,10 @@ def load_meta(d):
     return m
 
 
-def rgb256(d, ev=2.8):
+def rgb256(d, ev=2.8, frame=None):
     m = load_meta(d)
     w, h = int(m["width"]), int(m["height"])
-    raw = np.fromfile(os.path.join(d, "frame_00.raw16"), dtype="<u2").reshape(h, w).astype(np.float32)
+    raw = np.fromfile(frame or os.path.join(d, "frame_00.raw16"), dtype="<u2").reshape(h, w).astype(np.float32)
     bl = [float(x) for x in m.get("black_level", "64 64 64 64").split()]
     wl = float(m.get("white_level", 1023))
     g = [float(x) for x in m.get("wb_gains", "1 1 1 1").split()]
@@ -110,13 +110,20 @@ def run(model, x):
 def main():
     src, dst, dirs = sys.argv[1], sys.argv[2], [d for a in sys.argv[3:] for d in glob.glob(a) if os.path.isfile(os.path.join(d, "meta.txt"))]
     base = [rgb256(d) for d in dirs]
-    # 보정 세트: 실제 장면 + 좌우 반전 + 노출 ×0.5/×2 (실내·역광 범위를 덮도록)
+    # 보정 세트: 실제 기기 버스트만, 버스트당 frame 0/4/7 + 좌우 반전.
+    # 비교(실기기 7장면 평균 |Δα|): 이 방식 0.081 < 노출 ×0.5/×2 증강 0.138 < 에뮬 포함 단순 0.169.
+    # 에뮬(합성) 인물과 노출 증강은 디코더 게이팅 경로(global avg pool → conv → sigmoid)의 활성 범위를 넓혀
+    # per-tensor int8 해상도를 깎았다 (avg_pool_9: 실제 −2.7..1.5인데 범위 66.7 → 한 단계 0.26).
     calib = []
-    for x in base:
-        for v in (x, x[:, ::-1]):
-            for s in (0.5, 1.0, 2.0):
-                calib.append(np.clip((v ** 2.2 * s), 0, 1) ** (1 / 2.2))
-    print(f"calibration samples: {len(calib)} from {len(dirs)} bursts")
+    for d in dirs:
+        if "emu_" in os.path.basename(d):
+            continue
+        for fi in (0, 4, 7):
+            fr = os.path.join(d, "frame_%02d.raw16" % fi)
+            if os.path.exists(fr):
+                x = rgb256(d, frame=fr)
+                calib += [x, x[:, ::-1]]
+    print(f"calibration samples: {len(calib)} (device bursts only)")
     sig_model = dst + ".sig.tflite"
     add_signature(src, sig_model)
     it = Interpreter(model_path=sig_model)
