@@ -23,3 +23,6 @@ models/*.tflite
 third_party/qnn/
 application/
 Google_Pixel*.md
+
+# 전력 측정 원본(50 ms 샘플 CSV·로그·구간 JSON)은 저장소에 넣지 않는다 — 분석 결과 JSON만 추적. 원본은 별도 보관(zip)
+results/power/*/raw/

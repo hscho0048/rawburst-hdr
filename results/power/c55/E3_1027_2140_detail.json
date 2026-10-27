@@ -1,0 +1,198 @@
+{
+ "E3_r1_off": {
+  "policy": "off",
+  "throttle_onset_shot": 8,
+  "throttle_onset_s": 8.6,
+  "deep_throttle_shot": 78,
+  "deep_throttle_s": 98.1,
+  "cap4_mhz": [
+   2361,
+   1555
+  ],
+  "cpu_peak_c": 68.0,
+  "bins": [
+   {
+    "shots": "1-30",
+    "proc_ms_med": 429.5,
+    "wall_ms_med": 1203.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 6.027
+   },
+   {
+    "shots": "31-60",
+    "proc_ms_med": 429.5,
+    "wall_ms_med": 1202.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.765
+   },
+   {
+    "shots": "61-90",
+    "proc_ms_med": 446.0,
+    "wall_ms_med": 1266.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.932
+   },
+   {
+    "shots": "91-120",
+    "proc_ms_med": 490.5,
+    "wall_ms_med": 1322.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.615
+   },
+   {
+    "shots": "121-150",
+    "proc_ms_med": 524.0,
+    "wall_ms_med": 1367.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.624
+   }
+  ]
+ },
+ "E3_r1_thermal": {
+  "policy": "thermal",
+  "throttle_onset_shot": 7,
+  "throttle_onset_s": 7.8,
+  "deep_throttle_shot": 79,
+  "deep_throttle_s": 99.2,
+  "cap4_mhz": [
+   2361,
+   1555
+  ],
+  "cpu_peak_c": 66.3,
+  "bins": [
+   {
+    "shots": "1-30",
+    "proc_ms_med": 410.5,
+    "wall_ms_med": 1187.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.975
+   },
+   {
+    "shots": "31-60",
+    "proc_ms_med": 422.0,
+    "wall_ms_med": 1234.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.95
+   },
+   {
+    "shots": "61-90",
+    "proc_ms_med": 434.5,
+    "wall_ms_med": 1254.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.864
+   },
+   {
+    "shots": "91-120",
+    "proc_ms_med": 477.5,
+    "wall_ms_med": 1328.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.86
+   },
+   {
+    "shots": "121-150",
+    "proc_ms_med": 483.0,
+    "wall_ms_med": 1329.5,
+    "frames_mean": 7.5,
+    "gross_j_per_shot": 5.647
+   }
+  ]
+ },
+ "E3_r2_off": {
+  "policy": "off",
+  "throttle_onset_shot": 6,
+  "throttle_onset_s": 6.9,
+  "deep_throttle_shot": 68,
+  "deep_throttle_s": 86.0,
+  "cap4_mhz": [
+   2361,
+   1555
+  ],
+  "cpu_peak_c": 68.7,
+  "bins": [
+   {
+    "shots": "1-30",
+    "proc_ms_med": 418.0,
+    "wall_ms_med": 1251.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 6.015
+   },
+   {
+    "shots": "31-60",
+    "proc_ms_med": 427.0,
+    "wall_ms_med": 1207.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.96
+   },
+   {
+    "shots": "61-90",
+    "proc_ms_med": 445.5,
+    "wall_ms_med": 1279.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.734
+   },
+   {
+    "shots": "91-120",
+    "proc_ms_med": 508.0,
+    "wall_ms_med": 1362.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.713
+   },
+   {
+    "shots": "121-150",
+    "proc_ms_med": 529.5,
+    "wall_ms_med": 1369.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.734
+   }
+  ]
+ },
+ "E3_r2_thermal": {
+  "policy": "thermal",
+  "throttle_onset_shot": 7,
+  "throttle_onset_s": 7.9,
+  "deep_throttle_shot": 75,
+  "deep_throttle_s": 95.7,
+  "cap4_mhz": [
+   2361,
+   1555
+  ],
+  "cpu_peak_c": 69.7,
+  "bins": [
+   {
+    "shots": "1-30",
+    "proc_ms_med": 419.0,
+    "wall_ms_med": 1199.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.951
+   },
+   {
+    "shots": "31-60",
+    "proc_ms_med": 430.0,
+    "wall_ms_med": 1250.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 6.1
+   },
+   {
+    "shots": "61-90",
+    "proc_ms_med": 438.0,
+    "wall_ms_med": 1270.0,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.984
+   },
+   {
+    "shots": "91-120",
+    "proc_ms_med": 504.5,
+    "wall_ms_med": 1368.5,
+    "frames_mean": 8,
+    "gross_j_per_shot": 5.91
+   },
+   {
+    "shots": "121-150",
+    "proc_ms_med": 492.5,
+    "wall_ms_med": 1357.0,
+    "frames_mean": 7.33,
+    "gross_j_per_shot": 5.813
+   }
+  ]
+ }
+}
