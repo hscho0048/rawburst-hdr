@@ -24,7 +24,7 @@ import java.nio.ByteBuffer
  * DUMP : 버스트를 files/burst_<ts>/ 에 raw16 + meta.txt로 저장 (PC cli 입력). 처리도 함께 한다.
  * EMU  : files/emu_xxx 디렉터리 (adb push한 에뮬 버스트)를 처리 — 기기 없이 JNI·보케 경로 검증.
  * 자동화: adb shell am start -n dev.burstpipe/.MainActivity --es action shoot|dump|emu [--es dir <path>]
- * 전력 실험 (docs/power.md, 샘플은 PowerService가 따로 남긴다. 여기는 구간 경계 boottime ns + 반복 기록):
+ * 전력 실험 (docs/power.md). 배터리 샘플은 PowerService(앱) 또는 ShellSampler(shell)가 따로 남기고, 여기는 구간 경계 boottime ns + 반복 기록만:
  *   --es action stress --ei count 150 --es policy off|thermal --es label L   → files/power/L.json  (E3)
  *   --es action pstage --es stage idle|capture|plain|portrait|seg|jpeg --ei seconds 30 --es label L     (E4)
  *   --ef brightness 0.5 : 창 밝기 고정 (앱 실험 공통 조건)
@@ -135,7 +135,7 @@ class MainActivity : Activity(), CaptureController.Listener {
                 procHandler.post {
                     val st = Native.setPolicy(if (pol.contains("adpf")) 400 else 0, pol.contains("thermal"))
                     Log.i(CaptureController.TAG, "STRESS start count=$stressTotal policy=$pol $st")
-                    pShots.setLength(0); pT0 = SystemClock.elapsedRealtimeNanos()
+                    pShots.setLength(0); pIterMs.clear(); pT0 = SystemClock.elapsedRealtimeNanos()
                     stressLeft = stressTotal
                     runOnUiThread { doShoot(false) }
                 }

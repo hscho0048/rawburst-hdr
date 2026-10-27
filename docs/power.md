@@ -5,7 +5,8 @@
 > 그래서 주 지표는 같은 조건 idle을 뺀 **순 에너지(net J)** 와 그것을 반복 횟수로 나눈 **net J/회**다.
 > 실측한 것만 적는다. 추정은 "추정", 안 된 실험은 "안 됨 + 이유"로 표시한다.
 
-출처 표기: **[C55]** Galaxy C55 실측, **[Mix4]** Mi Mix 4 실측. 원본 JSON은 `results/power/<기기>/`.
+출처 표기: **[C55]** Galaxy C55 실측, **[Mix4]** Mi Mix 4 실측. 분석 결과 JSON(구간별 gross/idle/net J·반복·ms·온도·클럭)은 `results/power/<기기>/`.
+원본(50 ms 배터리 샘플 CSV, 구간 기록, 1초 클럭·온도 로그)은 용량 때문에 저장소에 넣지 않고 따로 보관한다(`results/power/<기기>/raw/`, gitignore). 스크립트를 돌리면 같은 위치에 생긴다.
 
 ## 1. 기기
 
@@ -26,7 +27,7 @@
 
 ### 2.1 샘플러 — 왜 앱에서 재나
 - cli(`core/src/power.cc` `BatterySampler`): 스레드 하나가 `/sys/class/power_supply/*/current_now`·`voltage_now`를 50 ms마다 읽어 P=V×I를 사다리꼴 적분.
-  **두 기기 모두 shell에서 `Permission denied`** (battery, usb, ac, wireless, otg 전부 — `results/power/*/raw/*/val_*.json`의 `sysfs_power.why`).
+  **두 기기 모두 shell에서 `Permission denied`** (battery, usb, ac, wireless, otg 전부 — 검증 런 구간 JSON의 `sysfs_power.why`, 원본 보관분).
   thermal_zone의 `vbat`(전압)은 읽히지만 전류(`*-ibat-lvl*`)는 BCL 임계값용이라 값이 일관되지 않아(Mix 4에서 lvl0 156 / lvl1 468) 쓰지 않았다.
   `dumpsys battery`의 `current now`(삼성만 있음)는 5초 간격으로 읽어도 같은 값(캐시)이라 샘플링용이 아니다.
 - 그래서 **앱 `PowerService`(foreground service)** 가 `BatteryManager.BATTERY_PROPERTY_CURRENT_NOW`를 50 ms마다 읽고, 전압은 `ACTION_BATTERY_CHANGED`의 `EXTRA_VOLTAGE`를 쓴다.
@@ -131,7 +132,7 @@ cli, 화면 꺼짐, 세그·보케 없음, 4080×3072 × 8장. C55 코어: 0–3
 | off (N=8 고정) | 320 (303–337) | 2.13 (2.02–2.25) | 1282 | 200 | 4.37 | 2.77 |
 | thermal (거버너) | 316 (308–324) | 2.11 (2.05–2.16) | 1277 | 199 | 4.45 | 2.87 |
 
-30장 단위 (2회 중 r1; `results/power/c55/raw/E3_1027_2140/e3_detail.json`):
+30장 단위 (2회 중 r1; `results/power/c55/E3_1027_2140_detail.json`):
 
 | 장 | off 처리 ms | off 셔터→JPEG | thermal 처리 ms | thermal 셔터→JPEG | thermal 평균 N |
 |---|---|---|---|---|---|
