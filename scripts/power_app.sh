@@ -36,6 +36,8 @@ waitf() { s=0; while [ ! -f $F/$1.json ] && [ $s -lt $2 ]; do sleep 2; s=$((s + 
 # 1초 주기 클럭·온도 모니터 (스로틀 진입 시점용): uptime cpu0 cpu4 cpu7 cap4 cap7 cpu_max_mC
 ( while [ ! -f $P/DONE ]; do c=/sys/devices/system/cpu; echo "$(cut -d' ' -f1 /proc/uptime) $(cat $c/cpu0/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_cur_freq) $(cat $c/cpu7/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_max_freq) $(cat $c/cpu7/cpufreq/scaling_max_freq) $(cpu_t)"; sleep 1; done > $P/monitor.txt ) &
 # MIUI 스와이프 잠금: 깨운 뒤 keyguard가 떠 있으면 activityTimeoutWM=10 s로 곧 꺼진다 → 스와이프와 같은 dismiss
+# shell 샘플러는 force-stop과 무관하므로 맨 먼저 시작 — wake lock을 잡아야 화면-꺼짐 사전 냉각 중 기기가 suspend로 가지 않는다
+if [ "$SAMPLER" = shell ]; then CSV=$D/power/$RUN.csv; CLASSPATH=$(pm path $PKG | cut -d: -f2) nohup app_process /system/bin dev.burstpipe.ShellSampler $CSV 50 > $D/power/$RUN.sampler.log 2>&1 & fi
 # 화면-꺼짐 기준 온도 (E3 쿨다운용): 끄고 1분에 0.5°C 넘게 안 떨어질 때까지 → T0OFF
 input keyevent 223; sleep 20
 if [ "$EXP" = E3 ]; then a=$(cpu_t); s=0; while [ $s -lt $PRE_MAX ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; T0OFF=$(cpu_t); log "screen-off T0OFF=$T0OFF after ${s}s"; fi
@@ -43,7 +45,7 @@ cooloff() { s=0; while [ $(cpu_t) -gt $((T0OFF + 1000)) ] && [ $s -lt $COOL_MAX 
 input keyevent 224; sleep 1; wm dismiss-keyguard; settings put system screen_brightness_mode 0
 am force-stop $PKG; sleep 1
 # 샘플러는 force-stop 뒤에 시작 (force-stop은 같은 패키지의 서비스도 죽인다)
-if [ "$SAMPLER" = shell ]; then CSV=$D/power/$RUN.csv; CLASSPATH=$(pm path $PKG | cut -d: -f2) nohup app_process /system/bin dev.burstpipe.ShellSampler $CSV 50 > $D/power/$RUN.sampler.log 2>&1 &
+if [ "$SAMPLER" = shell ]; then :
 else CSV=$F/$RUN.csv; am start-foreground-service -n $PKG/.PowerService --es name $RUN --ei period_ms 50 >/dev/null; fi; sleep 2
 $A; sleep 15   # 카메라·세그 델리게이트 init (GPU OpenCL init 2-3 s)
 # 사전 안정화: 프리뷰 켠 상태에서 CPU 온도가 1분에 0.5°C 넘게 변하지 않을 때까지 (최대 15분) → T0
