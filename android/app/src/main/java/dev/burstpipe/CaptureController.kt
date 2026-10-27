@@ -74,6 +74,7 @@ class CaptureController(ctx: Context, private val listener: Listener) {
     @Volatile var ready = false
         private set
     @Volatile private var current: BurstDumper? = null
+    private var lastSlots: Array<java.nio.ByteBuffer>? = null  // 연속 캡처(E4 capture) 슬롯 재사용
 
     fun describe(): String = "camera=$cameraId raw=${rawSize.width}x${rawSize.height} proc=${procSize.width}x${procSize.height} manual=$hasManual " +
         "level=${chars?.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)} " +
@@ -125,16 +126,17 @@ class CaptureController(ctx: Context, private val listener: Listener) {
     }
 
     /** 버스트 1회. dumpToDisk=true면 raw16 + meta.txt 를 files/burst_<ts>/ 에 쓴다 (PC 파이프라인 입력). */
-    fun shoot(dumpToDisk: Boolean): Boolean {
+    fun shoot(dumpToDisk: Boolean, reuseSlots: Boolean = false): Boolean {
         val d = device ?: return false
         val s = session ?: return false
         val c = chars ?: return false
         if (current != null) return false  // 이전 버스트 진행 중
-        val dumper = BurstDumper(appCtx, procSize.width, procSize.height, n, c, dumpToDisk, cropX, cropY) { done ->
+        val dumper = BurstDumper(appCtx, procSize.width, procSize.height, n, c, dumpToDisk, cropX, cropY, if (reuseSlots) lastSlots else null) { done ->
             current = null
             listener.onBurst(done)
         }
         current = dumper
+        lastSlots = dumper.slots
 
         val req = d.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
             addTarget(rawReader!!.surface)

@@ -17,6 +17,7 @@
         <uses-native-library android:name="libcdsprpc.so" android:required="false" />
         <service
             android:name=".PowerService"
+            android:process=":power"
             android:exported="true"
             android:foregroundServiceType="specialUse">
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="battery power sampling for on-device measurement" />

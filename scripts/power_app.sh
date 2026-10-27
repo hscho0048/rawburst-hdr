@@ -33,6 +33,10 @@ waitf() { s=0; while [ ! -f $F/$1.json ] && [ $s -lt $2 ]; do sleep 2; s=$((s + 
 # 1초 주기 클럭·온도 모니터 (스로틀 진입 시점용): uptime cpu0 cpu4 cpu7 cap4 cap7 cpu_max_mC
 ( while [ ! -f $P/DONE ]; do c=/sys/devices/system/cpu; echo "$(cut -d' ' -f1 /proc/uptime) $(cat $c/cpu0/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_cur_freq) $(cat $c/cpu7/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_max_freq) $(cat $c/cpu7/cpufreq/scaling_max_freq) $(cpu_t)"; sleep 1; done > $P/monitor.txt ) &
 # MIUI 스와이프 잠금: 깨운 뒤 keyguard가 떠 있으면 activityTimeoutWM=10 s로 곧 꺼진다 → 스와이프와 같은 dismiss
+# 화면-꺼짐 기준 온도 (E3 쿨다운용): 끄고 1분에 0.5°C 넘게 안 떨어질 때까지 → T0OFF
+input keyevent 223; sleep 20
+a=$(cpu_t); s=0; while [ $s -lt 900 ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; T0OFF=$(cpu_t); log "screen-off T0OFF=$T0OFF after ${s}s"
+cooloff() { s=0; while [ $(cpu_t) -gt $((T0OFF + 1000)) ] && [ $s -lt 1200 ]; do sleep 5; s=$((s + 5)); done; log "cooloff waited=${s}s cpu=$(cpu_t) T0OFF=$T0OFF"; }
 input keyevent 224; sleep 1; wm dismiss-keyguard; settings put system screen_brightness_mode 0
 am force-stop $PKG; sleep 1
 # 샘플러는 force-stop 뒤에 시작 (force-stop은 같은 패키지의 서비스도 죽인다)
@@ -48,7 +52,12 @@ EOS
     S=$STAGES; [ $((r % 2)) -eq 0 ] && S=$(echo $STAGES | tr ' ' '\n' | tac | tr '\n' ' ')
     for st in $S; do
       L="${EXP}_r${r}_${st}"
-      echo "cool"
+      if [ "$EXP" = E3 ]; then
+        # E3은 스로틀 진입 시점을 보므로 매 회 식은 상태에서 시작: 화면 끄고(카메라 닫힘) 화면-꺼짐 기준 T0OFF+1°C까지 → 다시 켜고 앱 init
+        echo "input keyevent 223; cooloff; input keyevent 224; sleep 1; wm dismiss-keyguard; \$A >/dev/null; sleep 15"
+      else
+        echo "cool"
+      fi
       echo "\$A --es action pstage --es stage idle --ei seconds $SECS --es label ${L}_idle >/dev/null; waitf ${L}_idle 120"
       if [ "$EXP" = E4 ]; then
         echo "\$A --es action pstage --es stage $st --ei seconds $SECS --es label $L >/dev/null; waitf $L 300"

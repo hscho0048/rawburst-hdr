@@ -20,9 +20,11 @@ class BurstDumper(
     private val ctx: Context, val width: Int, val height: Int, val n: Int,
     private val chars: CameraCharacteristics, private val dumpToDisk: Boolean,
     private val cropX: Int = 0, private val cropY: Int = 0,  // RAW 안에서 자를 위치 (CaptureController.procSize)
+    reuse: Array<ByteBuffer>? = null,  // 이전 버스트 슬롯 재사용 (연속 캡처: 매번 8×25MB를 새로 잡으면 Java 힙 OOM)
     private val onDone: (BurstDumper) -> Unit,
 ) {
-    val slots: Array<ByteBuffer> = Array(n) { ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.nativeOrder()) }
+    val slots: Array<ByteBuffer> = reuse?.takeIf { r -> r.size == n && r.all { it.capacity() >= width * height * 2 } }
+        ?: Array(n) { ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.nativeOrder()) }
     private val timestamps = LongArray(n)
     var count = 0
         private set

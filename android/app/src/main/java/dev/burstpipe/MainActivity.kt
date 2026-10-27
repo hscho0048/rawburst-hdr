@@ -175,7 +175,7 @@ class MainActivity : Activity(), CaptureController.Listener {
             "capture" -> {
                 captureOnly = true
                 pT0 = SystemClock.elapsedRealtimeNanos()
-                doShoot(false)
+                doShoot(false, reuse = true)
             }
             else -> {
                 // 입력 버스트 1장 확보 (구간 밖) → 처리 스레드에서 반복
@@ -237,11 +237,11 @@ class MainActivity : Activity(), CaptureController.Listener {
         }
     }
 
-    private fun doShoot(dump: Boolean) {
+    private fun doShoot(dump: Boolean, reuse: Boolean = false) {
         if (ndkMode) { doShootNdk(); return }
         if (!cam.ready || !nativeReady) { setStatus("카메라 준비 중"); return }
         shutterAt = SystemClock.elapsedRealtime()
-        if (!cam.shoot(dump)) { Log.w(CaptureController.TAG, "shoot rejected (busy)"); setStatus("이전 버스트 진행 중") }
+        if (!cam.shoot(dump, reuse)) { Log.w(CaptureController.TAG, "shoot rejected (busy)"); setStatus("이전 버스트 진행 중") }
         else setStatus("burst ${if (dump) "(dump)" else ""}…")
     }
 
@@ -250,7 +250,7 @@ class MainActivity : Activity(), CaptureController.Listener {
         if (captureOnly) {  // E4 capture: 처리 없이 다음 버스트
             pIterMs.add((SystemClock.elapsedRealtime() - shutterAt).toDouble())
             if (SystemClock.elapsedRealtimeNanos() - pT0 < pSeconds * 1_000_000_000L) {
-                window.decorView.post { doShoot(false) }
+                window.decorView.post { doShoot(false, reuse = true) }
             } else {
                 captureOnly = false
                 writeRecord("app_capture", pT0, SystemClock.elapsedRealtimeNanos(), pIterMs.size, "\"stage\":\"capture\",\"frames\":${d.count}")
