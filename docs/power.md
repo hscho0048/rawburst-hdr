@@ -1,0 +1,70 @@
+# 전력·에너지 측정 — Galaxy C55 / Xiaomi Mi Mix 4
+
+> **모든 전력 수치는 기기 전체(배터리) 기준이다.** 삼성·샤오미 양산 기기에는 Pixel의 ODPM 같은 레일별(SoC/DDR/카메라) 전력계가 없어서
+> 배터리에서 나가는 전체 전력을 잰다. SoC 단독 전력이 아니며, 화면·모뎀(비행기 모드)·카메라 모듈·DRAM이 모두 들어 있다.
+> 그래서 주 지표는 같은 조건 idle을 뺀 **순 에너지(net J)** 와 그것을 반복 횟수로 나눈 **net J/회**다.
+> 실측한 것만 적는다. 추정은 "추정", 안 된 실험은 "안 됨 + 이유"로 표시한다.
+
+출처 표기: **[C55]** Galaxy C55 실측, **[Mix4]** Mi Mix 4 실측. 원본 JSON은 `results/power/<기기>/`.
+
+## 1. 기기
+
+| | Galaxy C55 (SM-C5560) | Xiaomi Mi Mix 4 (2106118C) |
+|---|---|---|
+| SoC | Snapdragon 7 Gen 1 (SM7450, taro) | Snapdragon 888+ (SM8350, lahaina; X1 2.995 GHz) |
+| CPU | 0–3 A510 1.80 GHz / 4–6 A710 2.36 GHz / 7 A710 2.40 GHz | 0–3 A55 1.80 GHz / 4–6 A78 2.42 GHz / 7 X1 2.995 GHz |
+| NPU (Hexagon HTP) | v69 — fp16 지원 | **v68 (Hexagon 780) — fp16 미지원, 정수만** |
+| OS | Android 16 (One UI) | Android 14, HyperOS OS1.0.8.0 (커널 5.4) |
+| 배터리 | 1셀 ~4.3 V | **2셀 직렬 ~8.6 V** (120 W 충전 구조) |
+| 화면 | 1080×2400 | 1080×2400 120 Hz |
+| 메인 카메라 RAW | 4080×3072 (50MP 2×2 비닝), GBRG, ISO 100–6400 | **6016×4512 (108MP 센서 비닝, RAW는 이 크기 하나뿐)**, GRBG, ISO 50–1600 |
+| BatteryManager CURRENT_NOW | µA, **방전 음수** | µA(1 mA 단위로 양자화), **방전 양수** |
+
+(Mix 4 카메라 정적 정보: `docs/camera_dump_mix4.txt`, C55: `docs/camera_dump.txt`)
+
+## 2. 측정 방법
+
+### 2.1 샘플러 — 왜 앱에서 재나
+- cli(`core/src/power.cc` `BatterySampler`): 스레드 하나가 `/sys/class/power_supply/*/current_now`·`voltage_now`를 50 ms마다 읽어 P=V×I를 사다리꼴 적분.
+  **두 기기 모두 shell에서 `Permission denied`** (battery, usb, ac, wireless, otg 전부 — `results/power/*/raw/*/val_*.json`의 `sysfs_power.why`).
+  thermal_zone의 `vbat`(전압)은 읽히지만 전류(`*-ibat-lvl*`)는 BCL 임계값용이라 값이 일관되지 않아(Mix 4에서 lvl0 156 / lvl1 468) 쓰지 않았다.
+  `dumpsys battery`의 `current now`(삼성만 있음)는 5초 간격으로 읽어도 같은 값(캐시)이라 샘플링용이 아니다.
+- 그래서 **앱 `PowerService`(foreground service)** 가 `BatteryManager.BATTERY_PROPERTY_CURRENT_NOW`를 50 ms마다 읽고, 전압은 `ACTION_BATTERY_CHANGED`의 `EXTRA_VOLTAGE`를 쓴다.
+  CSV: `t_ns(CLOCK_BOOTTIME), current_raw, charge_uah, voltage_mv, temp_dc, plugged, status`. 5초마다 파일에 붙인다.
+- cli 실험은 cli가 **구간 경계만** 기록한다 (`--power-json`: `CLOCK_BOOTTIME` ns = 앱의 `elapsedRealtimeNanos`와 같은 시간축 + 반복 수·ms·온도·클럭).
+  PC에서 `tools/power_analyze.py`가 샘플 × 구간을 적분한다. 앱 실험(E3·E4)은 앱이 같은 형식의 구간 JSON을 쓴다.
+- 구간: `gross_J` = ∫V·I dt, `idle_W` = 바로 앞 같은 조건 idle 30초 평균, `net_J = gross_J − idle_W × 구간 길이`, `net J/회 = net_J / 반복 수`.
+
+### 2.2 검증 (단위·부호·갱신 주기) — `results/power/<기기>/calibration.json`
+
+| | C55 | Mix 4 |
+|---|---|---|
+| 단위 | µA (화면 꺼짐 idle 중앙값 −40 283 → 0.22 W, 4.3 V) | µA (34 000 → 0.30 W, 8.6 V; 1 mA 단위 양자화) |
+| 방전 부호 | **음수** | **양수** |
+| 연료게이지 실제 갱신 주기 (값이 바뀌는 간격) | 중앙값 250 ms (p10–p90 200–1000 ms) | 중앙값 250 ms (p10–p90 246–498 ms) |
+| 샘플 간격 | 50.0 ms | 50.0 ms (구멍 0개, 아래 2.4 참고) |
+| 화면 밝기로 방향 확인 | 화면 꺼짐 0.22 W < 밝기 최소 0.68 W < 최대 1.05 W | 앱 창 밝기 0.0/1.0 을 15초씩 6번 교대: 최대가 인접 최소보다 **+0.060–0.075 W** (5/5) |
+| 쿨롱 카운터(CHARGE_COUNTER) 교차 확인 | 30초 구간에서는 해상도가 거칠어 쓸 수 없음 (같은 구간 74 J vs 37–66 J) | 동일 |
+
+- 갱신 주기 250 ms ≪ 측정 구간 30초 → 모든 실험은 **같은 작업을 30초 이상 반복**한 구간으로 잰다 (단일 2 ms 추론 같은 짧은 작업은 직접 못 잼).
+- 전압은 방송 때만 갱신(수 분 간격)이라 부하 중 전압 강하를 반영하지 못한다 → 부하 구간 에너지가 **추정 1–2% 과대**(4.3 V 중 수십 mV). idle 차분으로 일부 상쇄.
+
+### 2.3 측정 원칙 (두 기기 공통)
+- **USB 케이블을 뺀다.** 꽂혀 있으면 충전 전류가 섞인다 (`dumpsys battery unplug`는 표시만 바꾼다). 무선 adb(`adb tcpip` → `adb connect`)로 조작하고,
+  실험 시퀀스는 기기 안의 셸 러너가 nohup으로 실행한다 — 구간 중 adb·Wi-Fi 트래픽이 섞이지 않게. PC는 1분마다 상태 파일만 본다. 모든 구간 `plugged=0` 확인.
+- 배터리 30–90% (구간 기록에 잔량), 비행기 모드 + adb용 Wi-Fi만, 블루투스 끔.
+- cli 실험(E1·E2)은 화면 꺼짐, 앱 실험(E3·E4)은 화면 켜짐 + 창 밝기 0.4 고정 + 카메라 프리뷰 켜짐.
+- 구간마다 같은 조건 idle 기준선 30초. 쿨다운: CPU 최고 온도가 시작 온도 +1 °C 안으로 (최대 10–15분). 시작 전 사전 냉각(1분에 0.5 °C 넘게 안 떨어질 때까지).
+- 3회 반복, 순서는 번갈아(A B C A B C …; 앱은 홀수 회차 정방향·짝수 회차 역방향), 표는 중앙값(최소–최대).
+- 클럭: 구간 중 200 ms마다 cpu0/4/7 `scaling_cur_freq`(평균)와 `scaling_max_freq`(최소 = 스로틀 상한).
+
+### 2.4 무인 측정에서 부딪힌 것 (두 기기)
+- **MIUI 백그라운드 제한**: 앱 기본값이 `RUN_ANY_IN_BACKGROUND=ignore` → `Service.startForeground() not allowed due to bg restriction` →
+  서비스가 포그라운드가 못 되고 15초 뒤 동결, 샘플 363초 구멍 + 기기가 suspend로 가서 60초 idle 구간이 174초로 늘어남.
+  `cmd appops set dev.burstpipe RUN_ANY_IN_BACKGROUND allow` + 절전 예외(`dumpsys deviceidle whitelist +`)로 해결. 이후 구멍 0개.
+- **MIUI 스와이프 잠금**: `input keyevent WAKEUP` 뒤 keyguard가 떠 있으면 `activityTimeoutWM=10000` → 10초 만에 화면 꺼짐(설정 timeout 10분과 무관).
+  `wm dismiss-keyguard`(스와이프와 같음, 설정 변경 없음) 후 앱의 `FLAG_KEEP_SCREEN_ON`이 유지.
+- `am force-stop`은 같은 패키지의 샘플러 서비스도 죽인다 → 러너가 force-stop 뒤에 샘플러를 시작하고, 끝에 샘플러를 먼저 멈춘다. 서비스는 5초마다 파일에 쓴다.
+- Windows PC에서 Mix 4는 libusbK 드라이버("Pixel Tablet")로 잡혀 `adb devices`에 안 보임 → `ADB_LIBUSB=1`.
+
+<!-- RESULTS -->

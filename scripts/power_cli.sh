@@ -52,7 +52,7 @@ done
 $ADB shell "test -f $D/$MODEL" || $ADB push "models/$MODEL" $D/ >/dev/null
 
 # 기기 러너 생성
-R=$(mktemp)
+mkdir -p out; R=out/power_run_$RUN.sh
 {
   echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; mkdir -p \$P; cd \$D"
   echo "export LD_LIBRARY_PATH=\$D ADSP_LIBRARY_PATH=\"\$D;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp\""
@@ -98,4 +98,4 @@ for i in $(seq 1 20); do $ADB shell "test -f /sdcard/Android/data/dev.burstpipe/
 mkdir -p "$RAW"
 $ADB pull $D/power/$RUN/. "$RAW/" >/dev/null
 $ADB pull /sdcard/Android/data/dev.burstpipe/files/power/$RUN.csv "$RAW/samples.csv" >/dev/null
-python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/${EXP}_$RUN.json"
+python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/$RUN.json"

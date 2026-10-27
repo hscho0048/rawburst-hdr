@@ -5,6 +5,7 @@
 #include <mutex>
 #include <thread>
 #include <cstring>
+#include <cmath>
 #include <vector>
 #include <string>
 #include "burstpipe/seg.h"
@@ -164,8 +165,14 @@ class LiteRtSegmenter : public Segmenter {
     if (!interp_ || TfLiteInterpreterAllocateTensors(interp_) != kTfLiteOk) return false;
     const TfLiteTensor* in = TfLiteInterpreterGetInputTensor(interp_, 0);
     const TfLiteTensor* out = TfLiteInterpreterGetOutputTensor(interp_, 0);
-    if (TfLiteTensorByteSize(in) != 256 * 256 * 3 * 4) return false;
-    out_ch_ = (int)(TfLiteTensorByteSize(out) / (256 * 256 * 4));
+    // 양자화 모델(tools/quantize_selfie_int8.py, HTP v68용: int8 또는 a16w8)은 입출력도 정수 → scale/zero point로 변환
+    in_b_ = TfLiteTensorType(in) == kTfLiteInt8 ? 1 : TfLiteTensorType(in) == kTfLiteInt16 ? 2 : 4;
+    out_b_ = TfLiteTensorType(out) == kTfLiteInt8 ? 1 : TfLiteTensorType(out) == kTfLiteInt16 ? 2 : 4;
+    if (in_b_ < 4) { const TfLiteQuantizationParams q = TfLiteTensorQuantizationParams(in); in_s_ = q.scale; in_z_ = q.zero_point; qin_.resize((size_t)256 * 256 * 3 * in_b_); }
+    if (out_b_ < 4) { const TfLiteQuantizationParams q = TfLiteTensorQuantizationParams(out); out_s_ = q.scale; out_z_ = q.zero_point; }
+    if (TfLiteTensorByteSize(in) != (size_t)256 * 256 * 3 * in_b_) return false;
+    out_ch_ = (int)(TfLiteTensorByteSize(out) / (256 * 256 * out_b_));
+    if (out_b_ < 4) qout_.resize((size_t)256 * 256 * out_ch_ * out_b_);
     if (out_ch_ != 1 && out_ch_ != 2) return false;
     tmp_.resize((size_t)256 * 256 * out_ch_);
     std::vector<float> warm(256 * 256 * 3, 0.5f), wm(256 * 256);
@@ -174,10 +181,28 @@ class LiteRtSegmenter : public Segmenter {
   bool run(const float* rgb256, float* mask256) override {
     TfLiteTensor* in = TfLiteInterpreterGetInputTensor(interp_, 0);
     TfLiteStatus st;
-    if ((st = TfLiteTensorCopyFromBuffer(in, rgb256, 256 * 256 * 3 * 4)) != kTfLiteOk) { SEG_LOG("seg: copy in failed %d\n", (int)st); return false; }
+    if (in_b_ < 4) {
+      const float inv = 1.f / in_s_, lo = in_b_ == 1 ? -128.f : -32768.f, hi = in_b_ == 1 ? 127.f : 32767.f;
+      const size_t n = (size_t)256 * 256 * 3;
+      for (size_t i = 0; i < n; ++i) {
+        const float v = std::min(hi, std::max(lo, std::nearbyint(rgb256[i] * inv) + in_z_));
+        if (in_b_ == 1) reinterpret_cast<int8_t*>(qin_.data())[i] = (int8_t)v;
+        else reinterpret_cast<int16_t*>(qin_.data())[i] = (int16_t)v;
+      }
+      st = TfLiteTensorCopyFromBuffer(in, qin_.data(), qin_.size());
+    } else {
+      st = TfLiteTensorCopyFromBuffer(in, rgb256, 256 * 256 * 3 * 4);
+    }
+    if (st != kTfLiteOk) { SEG_LOG("seg: copy in failed %d\n", (int)st); return false; }
     if ((st = TfLiteInterpreterInvoke(interp_)) != kTfLiteOk) { SEG_LOG("seg: invoke failed %d\n", (int)st); return false; }
     const TfLiteTensor* out = TfLiteInterpreterGetOutputTensor(interp_, 0);
-    if ((st = TfLiteTensorCopyToBuffer(out, tmp_.data(), tmp_.size() * 4)) != kTfLiteOk) { SEG_LOG("seg: copy out failed %d\n", (int)st); return false; }
+    if (out_b_ < 4) {
+      if ((st = TfLiteTensorCopyToBuffer(out, qout_.data(), qout_.size())) != kTfLiteOk) { SEG_LOG("seg: copy out failed %d\n", (int)st); return false; }
+      for (size_t i = 0; i < tmp_.size(); ++i) {
+        const int q = out_b_ == 1 ? reinterpret_cast<const int8_t*>(qout_.data())[i] : reinterpret_cast<const int16_t*>(qout_.data())[i];
+        tmp_[i] = (q - out_z_) * out_s_;
+      }
+    } else if ((st = TfLiteTensorCopyToBuffer(out, tmp_.data(), tmp_.size() * 4)) != kTfLiteOk) { SEG_LOG("seg: copy out failed %d\n", (int)st); return false; }
     if (out_ch_ == 1) std::memcpy(mask256, tmp_.data(), 256 * 256 * 4);
     else for (int i = 0; i < 256 * 256; ++i) mask256[i] = tmp_[2 * i + 1];
     return true;
@@ -206,12 +231,14 @@ class LiteRtSegmenter : public Segmenter {
     }
     TfLiteQnnDelegateOptions o = opt_default();
     o.backend_type = kHtpBackend;
-    o.htp_options.precision = kHtpFp16;            // float16 모델 → HTP fp16 (양자화 모델이면 kHtpQuantized)
+    // float16 모델 → HTP fp16 (v69+), INT8 모델(파일명 *int8*) → kHtpQuantized. v68(SM8350)은 fp16 미지원 → INT8만 위임된다
+    const bool quant = model_path.find("int8") != std::string::npos;
+    o.htp_options.precision = quant ? kHtpQuantized : kHtpFp16;
+    SEG_LOG("seg: NPU precision %s\n", quant ? "quantized(int8)" : "fp16");
     o.htp_options.performance_mode = kHtpBurst;    // 셔터 순간 추론: 지연 우선
     const char* skel = std::getenv("BP_QNN_SKEL_DIR");
     if (!skel) skel = std::getenv("ADSP_LIBRARY_PATH");
     if (skel) o.skel_library_dir = skel;
-    (void)model_path;
     npu_ = create(&o);
     if (!npu_) { SEG_LOG("seg: TfLiteQnnDelegateCreate failed\n"); return false; }
     TfLiteInterpreterOptionsAddDelegate(opts_, npu_);
@@ -232,6 +259,10 @@ class LiteRtSegmenter : public Segmenter {
   TfLiteInterpreter* interp_ = nullptr;
   int out_ch_ = 1;
   std::vector<float> tmp_;
+  int in_b_ = 4, out_b_ = 4;  // 원소 바이트: 4 float, 1 int8, 2 int16
+  float in_s_ = 1, out_s_ = 1;
+  int in_z_ = 0, out_z_ = 0;
+  std::vector<uint8_t> qin_, qout_;
 };
 
 // 델리게이트 소유 스레드 (설계문서 6장): GPU 델리게이트는 "초기화한 스레드에서만 Invoke" 가능하다

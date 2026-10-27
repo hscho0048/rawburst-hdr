@@ -21,7 +21,7 @@ case $EXP in
   *) echo "E3|E4"; exit 2 ;;
 esac
 
-R=$(mktemp)
+mkdir -p out; R=out/power_run_$RUN.sh
 {
   echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; F=$F; PKG=$PKG; mkdir -p \$P"
   echo "A=\"am start -n \$PKG/.MainActivity --es delegate $DELEGATE --ef brightness $BRIGHT\""
@@ -32,7 +32,8 @@ cool() { s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt 900 ]; do sleep 
 waitf() { s=0; while [ ! -f $F/$1.json ] && [ $s -lt $2 ]; do sleep 2; s=$((s + 2)); done; [ -f $F/$1.json ] && log "ok $1" || log "TIMEOUT $1"; }
 # 1초 주기 클럭·온도 모니터 (스로틀 진입 시점용): uptime cpu0 cpu4 cpu7 cap4 cap7 cpu_max_mC
 ( while [ ! -f $P/DONE ]; do c=/sys/devices/system/cpu; echo "$(cut -d' ' -f1 /proc/uptime) $(cat $c/cpu0/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_cur_freq) $(cat $c/cpu7/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_max_freq) $(cat $c/cpu7/cpufreq/scaling_max_freq) $(cpu_t)"; sleep 1; done > $P/monitor.txt ) &
-input keyevent 224; settings put system screen_brightness_mode 0
+# MIUI 스와이프 잠금: 깨운 뒤 keyguard가 떠 있으면 activityTimeoutWM=10 s로 곧 꺼진다 → 스와이프와 같은 dismiss
+input keyevent 224; sleep 1; wm dismiss-keyguard; settings put system screen_brightness_mode 0
 am force-stop $PKG; sleep 1
 # 샘플러는 force-stop 뒤에 시작 (force-stop은 같은 패키지의 서비스도 죽인다)
 am start-foreground-service -n $PKG/.PowerService --es name $RUN --ei period_ms 50 >/dev/null; sleep 2
@@ -73,4 +74,4 @@ $ADB pull $D/power/$RUN/. "$RAW/" >/dev/null
 $ADB pull $F/$RUN.csv "$RAW/samples.csv" >/dev/null
 for f in $($ADB shell "ls $F/${EXP}_r*.json" | tr -d '\r'); do $ADB pull "$f" "$RAW/" >/dev/null; done
 $ADB shell "rm -f $F/${EXP}_r*.json"
-python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/${EXP}_$RUN.json"
+python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/$RUN.json"

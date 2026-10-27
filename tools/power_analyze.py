@@ -152,7 +152,7 @@ def cmd_analyze(a):
              "gross_j": round(e["gross_j"], 4), "avg_w": round(e["gross_j"] / sec, 4),
              "ms_per_iter": r.get("ms_per_iter"), "iter_ms_median": r.get("iter_ms_median"),
              "cpu_max_c": r.get("cpu_max_c"), "skin_c": r.get("skin_c"), "batt_temp_c": e["batt_temp_c"],
-             "clocks": r.get("clocks"), "plugged": e["plugged"], "n_samples": e["n_samples"],
+             "clocks": r.get("clocks"), "plugged": e["plugged"], "n_samples": e["n_samples"], "voltage_mv": e["voltage_mv"],
              "cc_gross_j": round(e["cc_j"], 3) if e["cc_j"] is not None else None, "args": r.get("args")}
         if idle:
             ei = integrate(rows, idle["t0_ns"], idle["t1_ns"], calib)

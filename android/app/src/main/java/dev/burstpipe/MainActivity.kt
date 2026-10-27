@@ -213,7 +213,7 @@ class MainActivity : Activity(), CaptureController.Listener {
 
     private fun openCamera(h: SurfaceHolder) {
         if (!ndkMode) cam.start(h.surface)
-        if (nativeReady || cam.rawSize.width == 0) return
+        if (nativeReady || cam.procSize.width == 0) return
         procHandler.post {
             // 세그 모델이 assets에 있으면 사용 (LiteRT 포함 빌드에서만 성공). 없으면 보케 생략.
             // _std = 커스텀 op를 표준 TRANSPOSE_CONV로 바꾼 모델 (tools/convert_selfie_model.py): NPU가 그래프 전체를 가져간다
@@ -230,7 +230,7 @@ class MainActivity : Activity(), CaptureController.Listener {
             val cores = Runtime.getRuntime().availableProcessors()
             val cpus = if (cores >= 8) intArrayOf(4, 5, 6, 7) else IntArray(0)   // SM7450: 4~7 = A710
             val threads = minOf(4, cores)
-            val st = Native.init(cam.rawSize.width, cam.rawSize.height, cam.n, model, delegate, threads, cpus)
+            val st = Native.init(cam.procSize.width, cam.procSize.height, cam.n, model, delegate, threads, cpus)
             val ndkInfo = if (ndkMode) Native.ndkOpen(h.surface, cam.n) else ""
             nativeReady = true
             setStatus("${cam.describe()}\nnative: threads=$threads cpus=${cpus.joinToString(",")} $st $ndkInfo")
@@ -289,7 +289,7 @@ class MainActivity : Activity(), CaptureController.Listener {
     private fun doShootNdk() {
         shutterAt = SystemClock.elapsedRealtime()
         procHandler.post {
-            val w = cam.rawSize.width; val h = cam.rawSize.height
+            val w = cam.procSize.width; val h = cam.procSize.height
             val out = ByteBuffer.allocateDirect(w * h * 4)
             val json = Native.ndkShoot(out)
             if (json.isEmpty()) { setStatus("ndk shoot failed"); return@post }
