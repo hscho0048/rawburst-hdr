@@ -44,9 +44,12 @@ object ShellSampler {
             status = v("status") ?: 0; tempDc = v("temperature") ?: 0
         }
         dump()
+        // shell에는 PowerService 같은 앱 wake lock이 없다 → 화면 꺼진 구간에서 기기가 suspend로 가 샘플·작업이 멈춘다.
+        // shell uid는 WAKE_LOCK 권한이 있으므로 IPowerManager로 PARTIAL wake lock을 직접 잡는다 (프로세스가 끝나면 자동 해제)
+        val wl = acquireWakeLock()
         val sb = StringBuilder(1 shl 16)
         out.writeText("t_ns,current_raw,charge_uah,voltage_mv,temp_dc,plugged,status\n")
-        System.err.println("ShellSampler → $out period=${period}ms vbat=${vbat?.path} cells=$scale")
+        System.err.println("ShellSampler → $out period=${period}ms vbat=${vbat?.path} cells=$scale wakelock=$wl")
         var next = SystemClock.elapsedRealtimeNanos(); var lastFlush = next
         while (!stop.exists()) {
             val t = SystemClock.elapsedRealtimeNanos()
@@ -63,6 +66,27 @@ object ShellSampler {
         out.appendText(sb.toString())
         File(out.path + ".done").writeText("ok\n")
     }
+
+    /** IPowerManager.acquireWakeLock(lock, flags, tag, packageName, ws, historyTag, displayId, callback) — 시그니처가 API마다 달라 타입 순서로 채운다 */
+    private fun acquireWakeLock(): String = runCatching {
+        val b = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java).invoke(null, "power") as IBinder
+        val pm = Class.forName("android.os.IPowerManager\$Stub").getMethod("asInterface", IBinder::class.java).invoke(null, b)!!
+        val m = pm.javaClass.methods.first { it.name == "acquireWakeLock" }
+        var ints = 0; var strs = 0
+        val args = m.parameterTypes.map { t ->
+            when {
+                t == IBinder::class.java -> android.os.Binder()
+                t == Int::class.javaPrimitiveType -> if (ints++ == 0) 1 /* PARTIAL_WAKE_LOCK */ else -1 /* INVALID_DISPLAY */
+                t == String::class.java -> when (strs++) { 0 -> "burstpipe:shell_sampler"; 1 -> "com.android.shell"; else -> null }
+                else -> null
+            }
+        }
+        wakeLockToken = args[0]
+        m.invoke(pm, *args.toTypedArray())
+        "ok(${m.parameterTypes.size} args)"
+    }.getOrElse { "FAILED ${it.cause ?: it}" }
+
+    @Suppress("unused") private var wakeLockToken: Any? = null  // 바인더 토큰을 잡아 둔다 (GC되면 lock이 풀릴 수 있음)
 
     private fun registrar(): Any {
         val b = Class.forName("android.os.ServiceManager").getMethod("getService", String::class.java)
