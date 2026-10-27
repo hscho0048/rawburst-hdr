@@ -56,13 +56,13 @@ $ADB shell "test -f $D/$MODEL" || $ADB push "models/$MODEL" $D/ >/dev/null
 # 기기 러너 생성
 mkdir -p out; R=out/power_run_$RUN.sh
 {
-  echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; mkdir -p \$P; cd \$D"
+  echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; mkdir -p \$P; cd \$D; COOL_MAX=${COOL_MAX:-600}"
   echo "export LD_LIBRARY_PATH=\$D ADSP_LIBRARY_PATH=\"\$D;/vendor/dsp/cdsp;/vendor/lib/rfsa/adsp;/system/lib/rfsa/adsp;/dsp\""
   cat <<'EOS'
 cpu_t() { m=0; for z in /sys/class/thermal/thermal_zone*; do case "$(cat $z/type 2>/dev/null)" in *cpu*) v=$(cat $z/temp 2>/dev/null); [ "$v" -gt "$m" ] 2>/dev/null && [ "$v" -lt 150000 ] && m=$v;; esac; done; echo $m; }
 log() { echo "$(cut -d' ' -f1 /proc/uptime) $*" >> $P/status.log; }
-cool() {  # 시작 온도 +1°C 안으로 (최대 600 s)
-  s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt 600 ]; do sleep 5; s=$((s + 5)); done
+cool() {  # 시작 온도 +1°C 안으로 (최대 COOL_MAX 초, 기본 600)
+  s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt $COOL_MAX ]; do sleep 5; s=$((s + 5)); done
   log "cool waited=${s}s cpu=$(cpu_t) T0=$T0"
 }
 # 사전 냉각: 화면 끄고 CPU 온도가 1분에 0.5°C 넘게 떨어지지 않을 때까지 (최대 5분) → 그 온도가 T0

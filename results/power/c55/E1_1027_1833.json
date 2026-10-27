@@ -49,6 +49,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4203
+   ],
    "cc_gross_j": 52.216,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r1_npu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r1_npu.json",
    "idle_w": 0.2293,
@@ -101,6 +105,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4203
+   ],
    "cc_gross_j": 7.459,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r1_gpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r1_gpu.json",
    "idle_w": 0.2034,
@@ -153,6 +161,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4203
+   ],
    "cc_gross_j": 104.433,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r1_cpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r1_cpu.json",
    "idle_w": 0.2152,
@@ -205,6 +217,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4203
+   ],
    "cc_gross_j": 37.297,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r2_npu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r2_npu.json",
    "idle_w": 0.2254,
@@ -257,6 +273,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4203
+   ],
    "cc_gross_j": 14.919,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r2_gpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r2_gpu.json",
    "idle_w": 0.2477,
@@ -309,6 +329,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4203,
+    4125
+   ],
    "cc_gross_j": 44.454,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r2_cpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r2_cpu.json",
    "idle_w": 0.2512,
@@ -361,6 +385,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4125,
+    4125
+   ],
    "cc_gross_j": 65.889,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r3_npu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r3_npu.json",
    "idle_w": 0.2525,
@@ -413,6 +441,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4125,
+    4125
+   ],
    "cc_gross_j": 21.963,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r3_gpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r3_gpu.json",
    "idle_w": 0.2001,
@@ -465,6 +497,10 @@
    },
    "plugged": false,
    "n_samples": 600,
+   "voltage_mv": [
+    4125,
+    4125
+   ],
    "cc_gross_j": 58.568,
    "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r3_cpu --power-json /data/local/tmp/bp/power/E1_1027_1833/E1_r3_cpu.json",
    "idle_w": 0.179,

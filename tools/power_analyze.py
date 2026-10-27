@@ -166,9 +166,20 @@ def cmd_analyze(a):
                     w["gross_j_per_iter"] = round(e["gross_j"] / w["iters"], 5)
                 w["idle_plugged"] = ei["plugged"]
         out["windows"].append(w)
+    # 배경 활동으로 오염된 idle 기준선 제외: idle_W가 같은 분석의 idle 중앙값 × 2를 넘으면 그 구간은 요약에서 뺀다
+    # (Mix 4 E2 r3: APK 재설치 뒤 MIUI 백그라운드 작업으로 idle 2.3–3.0 W vs 평소 0.30 W). 창 자체는 windows에 남긴다.
+    idles = [w["idle_w"] for w in out["windows"] if w.get("idle_w") is not None]
+    if idles:
+        lim = 2 * st.median(idles)
+        for w in out["windows"]:
+            if w.get("idle_w") is not None and w["idle_w"] > lim:
+                w["excluded"] = f"idle_w {w['idle_w']} > 2×median {lim / 2:.3f} (배경 활동)"
+                print(f"exclude {w['label']}: {w['excluded']}")
     # 반복(r1, r2, ...)을 묶어 중앙값
     groups = {}
     for w in out["windows"]:
+        if w.get("excluded"):
+            continue
         cfg = re.sub(r"_r\d+_", "_", w["label"])
         groups.setdefault(cfg, []).append(w)
     for cfg, ws in groups.items():
