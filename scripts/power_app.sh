@@ -10,6 +10,9 @@ cd "$(dirname "$0")/.."
 ADB=${ADB:-adb}
 DEV=${1:?device}; EXP=${2:?E3|E4}; ROUNDS=${3:-3}
 DELEGATE=${DELEGATE:-npu}; BRIGHT=${BRIGHT:-0.4}; SECS=${SECS:-30}; COUNT=${COUNT:-150}
+# 사전 안정화·쿨다운 상한 (초). 배터리·시간 때문에 짧게: 상한에 걸리면 status.log에 그대로 남는다
+PRE_MAX=${PRE_MAX:-300}; COOL_MAX=${COOL_MAX:-600}
+SAMPLER=${SAMPLER:-app}   # shell: app_process 샘플러 (MIUI AutoPowerKill·force-stop과 무관)
 PKG=dev.burstpipe; D=/data/local/tmp/bp
 RUN=${RUN:-${EXP}_$(date +%m%d_%H%M)}
 OUT=results/power/$DEV; RAW=$OUT/raw/$RUN
@@ -24,30 +27,31 @@ esac
 mkdir -p out; R=out/power_run_$RUN.sh
 {
   echo "D=$D; RUN=$RUN; P=\$D/power/\$RUN; F=$F; PKG=$PKG; mkdir -p \$P"
-  echo "A=\"am start -n \$PKG/.MainActivity --es delegate $DELEGATE --ef brightness $BRIGHT\""
+  echo "A=\"am start -n \$PKG/.MainActivity --es delegate $DELEGATE --ef brightness $BRIGHT\"; PRE_MAX=$PRE_MAX; COOL_MAX=$COOL_MAX; EXP=$EXP; SAMPLER=$SAMPLER"
   cat <<'EOS'
 cpu_t() { m=0; for z in /sys/class/thermal/thermal_zone*; do case "$(cat $z/type 2>/dev/null)" in *cpu*) v=$(cat $z/temp 2>/dev/null); [ "$v" -gt "$m" ] 2>/dev/null && [ "$v" -lt 150000 ] && m=$v;; esac; done; echo $m; }
 log() { echo "$(cut -d' ' -f1 /proc/uptime) $*" >> $P/status.log; }
-cool() { s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt 900 ]; do sleep 5; s=$((s + 5)); done; log "cool waited=${s}s cpu=$(cpu_t) T0=$T0"; }
+cool() { s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt $COOL_MAX ]; do sleep 5; s=$((s + 5)); done; log "cool waited=${s}s cpu=$(cpu_t) T0=$T0"; }
 waitf() { s=0; while [ ! -f $F/$1.json ] && [ $s -lt $2 ]; do sleep 2; s=$((s + 2)); done; [ -f $F/$1.json ] && log "ok $1" || log "TIMEOUT $1"; }
 # 1초 주기 클럭·온도 모니터 (스로틀 진입 시점용): uptime cpu0 cpu4 cpu7 cap4 cap7 cpu_max_mC
 ( while [ ! -f $P/DONE ]; do c=/sys/devices/system/cpu; echo "$(cut -d' ' -f1 /proc/uptime) $(cat $c/cpu0/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_cur_freq) $(cat $c/cpu7/cpufreq/scaling_cur_freq) $(cat $c/cpu4/cpufreq/scaling_max_freq) $(cat $c/cpu7/cpufreq/scaling_max_freq) $(cpu_t)"; sleep 1; done > $P/monitor.txt ) &
 # MIUI 스와이프 잠금: 깨운 뒤 keyguard가 떠 있으면 activityTimeoutWM=10 s로 곧 꺼진다 → 스와이프와 같은 dismiss
 # 화면-꺼짐 기준 온도 (E3 쿨다운용): 끄고 1분에 0.5°C 넘게 안 떨어질 때까지 → T0OFF
 input keyevent 223; sleep 20
-a=$(cpu_t); s=0; while [ $s -lt 900 ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; T0OFF=$(cpu_t); log "screen-off T0OFF=$T0OFF after ${s}s"
-cooloff() { s=0; while [ $(cpu_t) -gt $((T0OFF + 1000)) ] && [ $s -lt 1200 ]; do sleep 5; s=$((s + 5)); done; log "cooloff waited=${s}s cpu=$(cpu_t) T0OFF=$T0OFF"; }
+if [ "$EXP" = E3 ]; then a=$(cpu_t); s=0; while [ $s -lt $PRE_MAX ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; T0OFF=$(cpu_t); log "screen-off T0OFF=$T0OFF after ${s}s"; fi
+cooloff() { s=0; while [ $(cpu_t) -gt $((T0OFF + 1000)) ] && [ $s -lt $COOL_MAX ]; do sleep 5; s=$((s + 5)); done; log "cooloff waited=${s}s cpu=$(cpu_t) T0OFF=$T0OFF"; }
 input keyevent 224; sleep 1; wm dismiss-keyguard; settings put system screen_brightness_mode 0
 am force-stop $PKG; sleep 1
 # 샘플러는 force-stop 뒤에 시작 (force-stop은 같은 패키지의 서비스도 죽인다)
-am start-foreground-service -n $PKG/.PowerService --es name $RUN --ei period_ms 50 >/dev/null; sleep 2
+if [ "$SAMPLER" = shell ]; then CSV=$D/power/$RUN.csv; CLASSPATH=$(pm path $PKG | cut -d: -f2) nohup app_process /system/bin dev.burstpipe.ShellSampler $CSV 50 > $D/power/$RUN.sampler.log 2>&1 &
+else CSV=$F/$RUN.csv; am start-foreground-service -n $PKG/.PowerService --es name $RUN --ei period_ms 50 >/dev/null; fi; sleep 2
 $A; sleep 15   # 카메라·세그 델리게이트 init (GPU OpenCL init 2-3 s)
 # 사전 안정화: 프리뷰 켠 상태에서 CPU 온도가 1분에 0.5°C 넘게 변하지 않을 때까지 (최대 15분) → T0
-pre() { a=$(cpu_t); s=0; while [ $s -lt 900 ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); d=$((a - b)); [ ${d#-} -lt 500 ] && break; a=$b; done; log "precool ${s}s cpu=$(cpu_t)"; }
+pre() { a=$(cpu_t); s=0; while [ $s -lt $PRE_MAX ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); d=$((a - b)); [ ${d#-} -lt 500 ] && break; a=$b; done; log "precool ${s}s cpu=$(cpu_t)"; }
 pre
 T0=$(cpu_t); log "start T0=$T0 level=$(dumpsys battery | grep -m1 ' level')"
 EOS
-  for r in $(seq 1 "$ROUNDS"); do
+  for r in $(seq $((${R0:-0} + 1)) $((${R0:-0} + ROUNDS))); do
     # 순서 번갈아: 홀수 회차 정방향, 짝수 회차 역방향
     S=$STAGES; [ $((r % 2)) -eq 0 ] && S=$(echo $STAGES | tr ' ' '\n' | tac | tr '\n' ' ')
     for st in $S; do
@@ -66,7 +70,7 @@ EOS
       fi
     done
   done
-  echo 'log "end level=$(dumpsys battery | grep -m1 " level")"; am start-foreground-service -n $PKG/.PowerService --es cmd stop >/dev/null; s=0; while [ ! -f $F/$RUN.csv.done ] && [ $s -lt 30 ]; do sleep 1; s=$((s + 1)); done; am force-stop $PKG; input keyevent 223; echo done > $P/DONE'
+  echo 'log "end level=$(dumpsys battery | grep -m1 " level")"; if [ "$SAMPLER" = shell ]; then touch $CSV.stop; else am start-foreground-service -n $PKG/.PowerService --es cmd stop >/dev/null; fi; s=0; while [ ! -f $CSV.done ] && [ $s -lt 30 ]; do sleep 1; s=$((s + 1)); done; am force-stop $PKG; input keyevent 223; echo done > $P/DONE'
 } > "$R"
 $ADB shell mkdir -p $D/power
 $ADB push "$R" $D/power/run_$RUN.sh >/dev/null; rm -f "$R"
@@ -80,7 +84,7 @@ while ! $ADB shell "test -f $D/power/$RUN/DONE" 2>/dev/null; do
 done
 mkdir -p "$RAW"
 $ADB pull $D/power/$RUN/. "$RAW/" >/dev/null
-$ADB pull $F/$RUN.csv "$RAW/samples.csv" >/dev/null
+if [ "$SAMPLER" = shell ]; then $ADB pull $D/power/$RUN.csv "$RAW/samples.csv" >/dev/null; else $ADB pull $F/$RUN.csv "$RAW/samples.csv" >/dev/null; fi
 for f in $($ADB shell "ls $F/${EXP}_r*.json" | tr -d '\r'); do $ADB pull "$f" "$RAW/" >/dev/null; done
 $ADB shell "rm -f $F/${EXP}_r*.json"
 python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/$RUN.json"

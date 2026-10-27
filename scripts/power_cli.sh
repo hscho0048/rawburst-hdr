@@ -12,6 +12,8 @@ ADB=${ADB:-adb}
 DEV=${1:?device name (c55|mix4)}; EXP=${2:?E1|E2}; ROUNDS=${3:-3}
 SECONDS_WORK=${SECONDS_WORK:-30}; SECONDS_IDLE=${SECONDS_IDLE:-30}
 BURST=${BURST:-test0}
+# SAMPLER=app(기본, 앱 PowerService) | shell(app_process, shell uid — MIUI AutoPowerKill 대상 아님. Mix 4는 이것)
+SAMPLER=${SAMPLER:-app}
 MODEL=${MODEL:-selfie_segmenter_std.tflite}
 D=/data/local/tmp/bp
 RUN=${RUN:-${EXP}_$(date +%m%d_%H%M)}
@@ -63,12 +65,12 @@ cool() {  # 시작 온도 +1°C 안으로 (최대 600 s)
   s=0; while [ $(cpu_t) -gt $((T0 + 1000)) ] && [ $s -lt 600 ]; do sleep 5; s=$((s + 5)); done
   log "cool waited=${s}s cpu=$(cpu_t) T0=$T0"
 }
-# 사전 냉각: 화면 끄고 CPU 온도가 1분에 0.5°C 넘게 떨어지지 않을 때까지 (최대 15분) → 그 온도가 T0
-pre() { a=$(cpu_t); s=0; while [ $s -lt 900 ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; log "precool ${s}s cpu=$(cpu_t)"; }
+# 사전 냉각: 화면 끄고 CPU 온도가 1분에 0.5°C 넘게 떨어지지 않을 때까지 (최대 5분) → 그 온도가 T0
+pre() { a=$(cpu_t); s=0; while [ $s -lt 300 ]; do sleep 60; s=$((s + 60)); b=$(cpu_t); [ $((a - b)) -lt 500 ] && break; a=$b; done; log "precool ${s}s cpu=$(cpu_t)"; }
 input keyevent 223; sleep 20; pre
 T0=$(cpu_t); log "start T0=$T0 level=$(dumpsys battery | grep -m1 level)"
 EOS
-  for r in $(seq 1 "$ROUNDS"); do
+  for r in $(seq $((${R0:-0} + 1)) $((${R0:-0} + ROUNDS))); do
     for c in "${CFGS[@]}"; do
       IFS='|' read -r name bin args <<<"$c"
       L="${EXP}_r${r}_${name}"
@@ -84,7 +86,12 @@ $ADB push "$R" $D/power/run_$RUN.sh >/dev/null; rm -f "$R"
 # 샘플링 시작 → 러너
 # MIUI: 앱 기본값이 백그라운드 제한(RUN_ANY_IN_BACKGROUND ignore) → "startForeground() not allowed due to bg restriction"
 #       으로 서비스가 포그라운드가 못 되고 곧 동결돼 샘플이 끊긴다. 절전 예외 + appops 허용.
-$ADB shell "dumpsys deviceidle whitelist +dev.burstpipe >/dev/null; cmd appops set dev.burstpipe RUN_ANY_IN_BACKGROUND allow; cmd appops set dev.burstpipe RUN_IN_BACKGROUND allow; am start-foreground-service -n dev.burstpipe/.PowerService --es name $RUN --ei period_ms 50 >/dev/null"
+$ADB shell "dumpsys deviceidle whitelist +dev.burstpipe >/dev/null; cmd appops set dev.burstpipe RUN_ANY_IN_BACKGROUND allow; cmd appops set dev.burstpipe RUN_IN_BACKGROUND allow"
+if [ "$SAMPLER" = shell ]; then
+  $ADB shell "CLASSPATH=\$(pm path dev.burstpipe | cut -d: -f2) nohup app_process /system/bin dev.burstpipe.ShellSampler $D/power/$RUN.csv 50 > $D/power/$RUN.sampler.log 2>&1 &"
+else
+  $ADB shell "am start-foreground-service -n dev.burstpipe/.PowerService --es name $RUN --ei period_ms 50 >/dev/null"
+fi
 sleep 2
 $ADB shell "nohup sh $D/power/run_$RUN.sh > $D/power/run_$RUN.log 2>&1 &"
 echo "[$DEV $EXP] run=$RUN rounds=$ROUNDS cfgs=${#CFGS[@]} started"
@@ -92,10 +99,10 @@ while ! $ADB shell "test -f $D/power/$RUN/DONE" 2>/dev/null; do
   sleep ${POLL:-60}
   $ADB shell "tail -1 $D/power/$RUN/status.log" 2>/dev/null | tr -d '\r' || echo "(adb 연결 끊김? 재시도)"
 done
-$ADB shell "am start-foreground-service -n dev.burstpipe/.PowerService --es cmd stop >/dev/null"
-for i in $(seq 1 20); do $ADB shell "test -f /sdcard/Android/data/dev.burstpipe/files/power/$RUN.csv.done" && break; sleep 1; done
+if [ "$SAMPLER" = shell ]; then CSV=$D/power/$RUN.csv; $ADB shell "touch $CSV.stop"; else CSV=/sdcard/Android/data/dev.burstpipe/files/power/$RUN.csv; $ADB shell "am start-foreground-service -n dev.burstpipe/.PowerService --es cmd stop >/dev/null"; fi
+for i in $(seq 1 20); do $ADB shell "test -f $CSV.done" && break; sleep 1; done
 
 mkdir -p "$RAW"
 $ADB pull $D/power/$RUN/. "$RAW/" >/dev/null
-$ADB pull /sdcard/Android/data/dev.burstpipe/files/power/$RUN.csv "$RAW/samples.csv" >/dev/null
+$ADB pull $CSV "$RAW/samples.csv" >/dev/null
 python tools/power_analyze.py analyze --csv "$RAW/samples.csv" --records "$RAW" --calib "$OUT/calibration.json" --out "$OUT/$RUN.json"
