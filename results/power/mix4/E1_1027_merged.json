@@ -1,0 +1,564 @@
+{
+ "calibration": {
+  "current_unit": "uA",
+  "discharge_sign": 1,
+  "gauge_update_ms_median": 250.1191665
+ },
+ "basis": "기기 전체(배터리) 기준 — SoC 단독 전력 아님",
+ "windows": [
+  {
+   "label": "E1_r1_npu",
+   "mode": "seg_only",
+   "seconds": 30.004,
+   "iters": 3998,
+   "gross_j": 142.933,
+   "avg_w": 4.7638,
+   "ms_per_iter": 7.505,
+   "iter_ms_median": 7.288,
+   "cpu_max_c": [
+    32.6,
+    56.6
+   ],
+   "skin_c": [
+    24.9,
+    27.1
+   ],
+   "batt_temp_c": [
+    24.0,
+    24.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 701,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 601,
+   "voltage_mv": [
+    8196,
+    8196
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r1_npu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r1_npu.json",
+   "idle_w": 0.3072,
+   "net_j": 133.7156,
+   "net_w": 4.4566,
+   "net_j_per_iter": 0.03345,
+   "gross_j_per_iter": 0.03575,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r1_gpu",
+   "mode": "seg_only",
+   "seconds": 30.01,
+   "iters": 1820,
+   "gross_j": 22.3911,
+   "avg_w": 0.7461,
+   "ms_per_iter": 16.489,
+   "iter_ms_median": 16.611,
+   "cpu_max_c": [
+    31.6,
+    28.9
+   ],
+   "skin_c": [
+    26.1,
+    26.1
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 723,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 714,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8178,
+    8178
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r1_gpu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r1_gpu.json",
+   "idle_w": 0.288,
+   "net_j": 13.7484,
+   "net_w": 0.4581,
+   "net_j_per_iter": 0.00755,
+   "gross_j_per_iter": 0.0123,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r1_cpu",
+   "mode": "seg_only",
+   "seconds": 30.003,
+   "iters": 3931,
+   "gross_j": 139.9075,
+   "avg_w": 4.6631,
+   "ms_per_iter": 7.632,
+   "iter_ms_median": 7.382,
+   "cpu_max_c": [
+    29.9,
+    57.6
+   ],
+   "skin_c": [
+    25.9,
+    27.8
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 699,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2108,
+     "min_mhz": 1555,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8178,
+    8178
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r1_cpu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r1_cpu.json",
+   "idle_w": 0.301,
+   "net_j": 130.8765,
+   "net_w": 4.3621,
+   "net_j_per_iter": 0.03329,
+   "gross_j_per_iter": 0.03559,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r2_npu",
+   "mode": "seg_only",
+   "seconds": 30.003,
+   "iters": 3963,
+   "gross_j": 142.4666,
+   "avg_w": 4.7484,
+   "ms_per_iter": 7.571,
+   "iter_ms_median": 7.326,
+   "cpu_max_c": [
+    32.9,
+    57.3
+   ],
+   "skin_c": [
+    26.4,
+    28.4
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 699,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8178,
+    8178
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r2_npu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r2_npu.json",
+   "idle_w": 0.3048,
+   "net_j": 133.3217,
+   "net_w": 4.4436,
+   "net_j_per_iter": 0.03364,
+   "gross_j_per_iter": 0.03595,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r2_gpu",
+   "mode": "seg_only",
+   "seconds": 30.009,
+   "iters": 1806,
+   "gross_j": 22.308,
+   "avg_w": 0.7434,
+   "ms_per_iter": 16.616,
+   "iter_ms_median": 16.553,
+   "cpu_max_c": [
+    32.6,
+    29.9
+   ],
+   "skin_c": [
+    27.1,
+    27.0
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 699,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 713,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8146,
+    8146
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r2_gpu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r2_gpu.json",
+   "idle_w": 0.2849,
+   "net_j": 13.7584,
+   "net_w": 0.4585,
+   "net_j_per_iter": 0.00762,
+   "gross_j_per_iter": 0.01235,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r2_cpu",
+   "mode": "seg_only",
+   "seconds": 30.002,
+   "iters": 3960,
+   "gross_j": 141.3227,
+   "avg_w": 4.7104,
+   "ms_per_iter": 7.576,
+   "iter_ms_median": 7.336,
+   "cpu_max_c": [
+    32.9,
+    57.6
+   ],
+   "skin_c": [
+    26.5,
+    28.4
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 700,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8186,
+    8186
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r2_cpu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r2_cpu.json",
+   "idle_w": 0.285,
+   "net_j": 132.772,
+   "net_w": 4.4254,
+   "net_j_per_iter": 0.03353,
+   "gross_j_per_iter": 0.03569,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r3_npu",
+   "mode": "seg_only",
+   "seconds": 30.003,
+   "iters": 3936,
+   "gross_j": 144.1826,
+   "avg_w": 4.8055,
+   "ms_per_iter": 7.623,
+   "iter_ms_median": 7.372,
+   "cpu_max_c": [
+    32.3,
+    56.9
+   ],
+   "skin_c": [
+    26.8,
+    28.8
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 702,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8160,
+    8160
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate npu --seconds 30 --label E1_r3_npu --power-json /data/local/tmp/bp/power/E1_1027_2120/E1_r3_npu.json",
+   "idle_w": 0.2867,
+   "net_j": 135.5806,
+   "net_w": 4.5188,
+   "net_j_per_iter": 0.03445,
+   "gross_j_per_iter": 0.03663,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r3_gpu",
+   "mode": "seg_only",
+   "seconds": 30.003,
+   "iters": 1816,
+   "gross_j": 22.6956,
+   "avg_w": 0.7564,
+   "ms_per_iter": 16.522,
+   "iter_ms_median": 16.495,
+   "cpu_max_c": [
+    34.3,
+    30.6
+   ],
+   "skin_c": [
+    27.6,
+    27.7
+   ],
+   "batt_temp_c": [
+    27.0,
+    27.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 698,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 724,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8070,
+    8070
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate gpu --seconds 30 --label E1_r3_gpu --power-json /data/local/tmp/bp/power/E1b_1027_r3/E1_r3_gpu.json",
+   "idle_w": 0.3069,
+   "net_j": 13.4877,
+   "net_w": 0.4495,
+   "net_j_per_iter": 0.00743,
+   "gross_j_per_iter": 0.0125,
+   "idle_plugged": false
+  },
+  {
+   "label": "E1_r3_cpu",
+   "mode": "seg_only",
+   "seconds": 30.003,
+   "iters": 3938,
+   "gross_j": 138.3315,
+   "avg_w": 4.6106,
+   "ms_per_iter": 7.619,
+   "iter_ms_median": 7.371,
+   "cpu_max_c": [
+    32.6,
+    57.9
+   ],
+   "skin_c": [
+    27.5,
+    29.4
+   ],
+   "batt_temp_c": [
+    27.0,
+    27.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 875,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2108,
+     "min_mhz": 1555,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2141,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    8070,
+    7872
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --seg-only --seg-model selfie_segmenter_std.tflite --delegate cpu --seconds 30 --label E1_r3_cpu --power-json /data/local/tmp/bp/power/E1b_1027_r3/E1_r3_cpu.json",
+   "idle_w": 0.3032,
+   "net_j": 129.2346,
+   "net_w": 4.3074,
+   "net_j_per_iter": 0.03282,
+   "gross_j_per_iter": 0.03513,
+   "idle_plugged": false
+  }
+ ],
+ "summary": {
+  "E1_npu": {
+   "n": 3,
+   "net_j_per_iter": 0.03364,
+   "net_w": 4.4566,
+   "avg_w": 4.7638,
+   "idle_w": 0.3048,
+   "ms_per_iter": 7.571,
+   "iter_ms_median": 7.326,
+   "iters": 3963,
+   "net_j_per_iter_all": [
+    0.03345,
+    0.03364,
+    0.03445
+   ],
+   "any_plugged": false
+  },
+  "E1_gpu": {
+   "n": 3,
+   "net_j_per_iter": 0.00755,
+   "net_w": 0.4581,
+   "avg_w": 0.7461,
+   "idle_w": 0.288,
+   "ms_per_iter": 16.522,
+   "iter_ms_median": 16.553,
+   "iters": 1816,
+   "net_j_per_iter_all": [
+    0.00755,
+    0.00762,
+    0.00743
+   ],
+   "any_plugged": false
+  },
+  "E1_cpu": {
+   "n": 3,
+   "net_j_per_iter": 0.03329,
+   "net_w": 4.3621,
+   "avg_w": 4.6631,
+   "idle_w": 0.301,
+   "ms_per_iter": 7.619,
+   "iter_ms_median": 7.371,
+   "iters": 3938,
+   "net_j_per_iter_all": [
+    0.03329,
+    0.03353,
+    0.03282
+   ],
+   "any_plugged": false
+  }
+ }
+}

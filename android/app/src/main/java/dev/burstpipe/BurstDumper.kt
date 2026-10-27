@@ -19,9 +19,12 @@ import java.nio.ByteOrder
 class BurstDumper(
     private val ctx: Context, val width: Int, val height: Int, val n: Int,
     private val chars: CameraCharacteristics, private val dumpToDisk: Boolean,
+    private val cropX: Int = 0, private val cropY: Int = 0,  // RAW 안에서 자를 위치 (CaptureController.procSize)
+    reuse: Array<ByteBuffer>? = null,  // 이전 버스트 슬롯 재사용 (연속 캡처: 매번 8×25MB를 새로 잡으면 Java 힙 OOM)
     private val onDone: (BurstDumper) -> Unit,
 ) {
-    val slots: Array<ByteBuffer> = Array(n) { ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.nativeOrder()) }
+    val slots: Array<ByteBuffer> = reuse?.takeIf { r -> r.size == n && r.all { it.capacity() >= width * height * 2 } }
+        ?: Array(n) { ByteBuffer.allocateDirect(width * height * 2).order(ByteOrder.nativeOrder()) }
     private val timestamps = LongArray(n)
     var count = 0
         private set
@@ -44,11 +47,11 @@ class BurstDumper(
         val dst = slots[count]
         dst.clear()
         val rowBytes = width * 2
-        if (rowStride == rowBytes) {
+        if (rowStride == rowBytes && cropX == 0 && cropY == 0) {
             dst.put(src)
         } else {
             val row = ByteArray(rowBytes)
-            for (y in 0 until height) { src.position(y * rowStride); src.get(row, 0, rowBytes); dst.put(row) }
+            for (y in 0 until height) { src.position((y + cropY) * rowStride + cropX * 2); src.get(row, 0, rowBytes); dst.put(row) }
         }
         dst.flip()
         timestamps[count] = img.timestamp
@@ -88,6 +91,7 @@ class BurstDumper(
         val first = results[timestamps[0]] ?: results.values.firstOrNull()
         val sb = StringBuilder()
         sb.append("width $width\nheight $height\n")
+        if (cropX != 0 || cropY != 0) sb.append("crop $cropX $cropY\n")
         sb.append("cfa ${chars.get(CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT) ?: 0}\n")
         sb.append("white_level ${chars.get(CameraCharacteristics.SENSOR_INFO_WHITE_LEVEL) ?: 1023}\n")
         // 동적 블랙레벨(결과)이 있으면 우선, 없으면 정적 패턴. 순서: (0,0) (1,0) (0,1) (1,1) = (y&1)*2+(x&1)

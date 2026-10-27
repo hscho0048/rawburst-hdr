@@ -1,0 +1,1116 @@
+{
+ "calibration": {
+  "current_unit": "uA",
+  "discharge_sign": 1,
+  "gauge_update_ms_median": 250.1191665
+ },
+ "basis": "기기 전체(배터리) 기준 — SoC 단독 전력 아님",
+ "windows": [
+  {
+   "label": "E2_r1_scalar_prime1",
+   "mode": "burst",
+   "seconds": 31.377,
+   "iters": 22,
+   "gross_j": 59.0966,
+   "avg_w": 1.8834,
+   "ms_per_iter": 1426.231,
+   "iter_ms_median": 1425.291,
+   "cpu_max_c": [
+    36.3,
+    40.9
+   ],
+   "skin_c": [
+    25.0,
+    25.8
+   ],
+   "batt_temp_c": [
+    24.0,
+    24.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 694,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 628,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 287.655,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r1_scalar_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_scalar_prime1.json",
+   "idle_w": 0.3013,
+   "net_j": 49.6427,
+   "net_w": 1.5821,
+   "net_j_per_iter": 2.25649,
+   "gross_j_per_iter": 2.68621,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r1_neon_little4",
+   "mode": "burst",
+   "seconds": 31.556,
+   "iters": 15,
+   "gross_j": 34.7611,
+   "avg_w": 1.1016,
+   "ms_per_iter": 2103.714,
+   "iter_ms_median": 2087.541,
+   "cpu_max_c": [
+    31.3,
+    34.3
+   ],
+   "skin_c": [
+    25.6,
+    25.8
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1804,
+     "min_mhz": 1804,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 719,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 631,
+   "voltage_mv": [
+    8070,
+    8070
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 0,1,2,3 --seconds 30 --label E2_r1_neon_little4 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_neon_little4.json",
+   "idle_w": 0.3103,
+   "net_j": 24.9693,
+   "net_w": 0.7913,
+   "net_j_per_iter": 1.66462,
+   "gross_j_per_iter": 2.31741,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r1_neon_mid3",
+   "mode": "burst",
+   "seconds": 30.009,
+   "iters": 95,
+   "gross_j": 162.0016,
+   "avg_w": 5.3984,
+   "ms_per_iter": 315.886,
+   "iter_ms_median": 315.178,
+   "cpu_max_c": [
+    42.9,
+    63.3
+   ],
+   "skin_c": [
+    25.6,
+    28.0
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 713,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 601,
+   "voltage_mv": [
+    7972,
+    7872
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 3 --cpus 4,5,6 --seconds 30 --label E2_r1_neon_mid3 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_neon_mid3.json",
+   "idle_w": 0.2973,
+   "net_j": 153.0798,
+   "net_w": 5.1011,
+   "net_j_per_iter": 1.61137,
+   "gross_j_per_iter": 1.70528,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r1_neon_prime1",
+   "mode": "burst",
+   "seconds": 30.37,
+   "iters": 38,
+   "gross_j": 66.9803,
+   "avg_w": 2.2054,
+   "ms_per_iter": 799.222,
+   "iter_ms_median": 798.392,
+   "cpu_max_c": [
+    37.3,
+    42.6
+   ],
+   "skin_c": [
+    26.4,
+    27.2
+   ],
+   "batt_temp_c": [
+    25.0,
+    25.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 691,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 607,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r1_neon_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_neon_prime1.json",
+   "idle_w": 0.3001,
+   "net_j": 57.8661,
+   "net_w": 1.9053,
+   "net_j_per_iter": 1.52279,
+   "gross_j_per_iter": 1.76264,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r1_neon_midprime4",
+   "mode": "burst",
+   "seconds": 30.174,
+   "iters": 117,
+   "gross_j": 198.6853,
+   "avg_w": 6.5847,
+   "ms_per_iter": 257.897,
+   "iter_ms_median": 257.086,
+   "cpu_max_c": [
+    41.6,
+    68.9
+   ],
+   "skin_c": [
+    26.5,
+    29.4
+   ],
+   "batt_temp_c": [
+    25.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 713,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2148,
+     "min_mhz": 1900,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 603,
+   "voltage_mv": [
+    7872,
+    7772
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 4,5,6,7 --seconds 30 --label E2_r1_neon_midprime4 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_neon_midprime4.json",
+   "idle_w": 0.3023,
+   "net_j": 189.5637,
+   "net_w": 6.2824,
+   "net_j_per_iter": 1.6202,
+   "gross_j_per_iter": 1.69817,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r1_neon_unpinned8",
+   "mode": "burst",
+   "seconds": 30.019,
+   "iters": 122,
+   "gross_j": 205.835,
+   "avg_w": 6.8568,
+   "ms_per_iter": 246.059,
+   "iter_ms_median": 245.034,
+   "cpu_max_c": [
+    45.6,
+    70.6
+   ],
+   "skin_c": [
+    27.0,
+    30.0
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1731,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2098,
+     "min_mhz": 1324,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2016,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 601,
+   "voltage_mv": [
+    7872,
+    7772
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 8 --seconds 30 --label E2_r1_neon_unpinned8 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r1_neon_unpinned8.json",
+   "idle_w": 0.307,
+   "net_j": 196.6191,
+   "net_w": 6.5498,
+   "net_j_per_iter": 1.61163,
+   "gross_j_per_iter": 1.68717,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_scalar_prime1",
+   "mode": "burst",
+   "seconds": 31.382,
+   "iters": 22,
+   "gross_j": 59.8629,
+   "avg_w": 1.9076,
+   "ms_per_iter": 1426.44,
+   "iter_ms_median": 1426.036,
+   "cpu_max_c": [
+    38.6,
+    42.6
+   ],
+   "skin_c": [
+    27.0,
+    27.7
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 692,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 628,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r2_scalar_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_scalar_prime1.json",
+   "idle_w": 0.3024,
+   "net_j": 50.3731,
+   "net_w": 1.6052,
+   "net_j_per_iter": 2.28969,
+   "gross_j_per_iter": 2.72104,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_neon_little4",
+   "mode": "burst",
+   "seconds": 31.512,
+   "iters": 15,
+   "gross_j": 34.8915,
+   "avg_w": 1.1072,
+   "ms_per_iter": 2100.828,
+   "iter_ms_median": 2097.375,
+   "cpu_max_c": [
+    32.3,
+    34.3
+   ],
+   "skin_c": [
+    26.7,
+    27.0
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1804,
+     "min_mhz": 1804,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 717,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 630,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 0,1,2,3 --seconds 30 --label E2_r2_neon_little4 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_neon_little4.json",
+   "idle_w": 0.306,
+   "net_j": 25.2487,
+   "net_w": 0.8012,
+   "net_j_per_iter": 1.68325,
+   "gross_j_per_iter": 2.3261,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_neon_mid3",
+   "mode": "burst",
+   "seconds": 30.036,
+   "iters": 96,
+   "gross_j": 163.4296,
+   "avg_w": 5.4411,
+   "ms_per_iter": 312.876,
+   "iter_ms_median": 312.058,
+   "cpu_max_c": [
+    42.9,
+    62.6
+   ],
+   "skin_c": [
+    26.6,
+    29.0
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 700,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2111,
+     "min_mhz": 1996,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    7872,
+    7772
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 3 --cpus 4,5,6 --seconds 30 --label E2_r2_neon_mid3 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_neon_mid3.json",
+   "idle_w": 0.3073,
+   "net_j": 154.1995,
+   "net_w": 5.1338,
+   "net_j_per_iter": 1.60624,
+   "gross_j_per_iter": 1.70239,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_neon_prime1",
+   "mode": "burst",
+   "seconds": 30.013,
+   "iters": 38,
+   "gross_j": 66.7914,
+   "avg_w": 2.2254,
+   "ms_per_iter": 789.824,
+   "iter_ms_median": 789.146,
+   "cpu_max_c": [
+    37.6,
+    43.6
+   ],
+   "skin_c": [
+    27.0,
+    27.8
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 691,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 600,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r2_neon_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_neon_prime1.json",
+   "idle_w": 0.3024,
+   "net_j": 57.7154,
+   "net_w": 1.923,
+   "net_j_per_iter": 1.51883,
+   "gross_j_per_iter": 1.75767,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_neon_midprime4",
+   "mode": "burst",
+   "seconds": 30.237,
+   "iters": 113,
+   "gross_j": 193.0989,
+   "avg_w": 6.3863,
+   "ms_per_iter": 267.58,
+   "iter_ms_median": 266.139,
+   "cpu_max_c": [
+    44.3,
+    68.9
+   ],
+   "skin_c": [
+    26.9,
+    29.8
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 772,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2097,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2149,
+     "min_mhz": 2035,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 604,
+   "voltage_mv": [
+    7872,
+    7672
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 4,5,6,7 --seconds 30 --label E2_r2_neon_midprime4 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_neon_midprime4.json",
+   "idle_w": 0.335,
+   "net_j": 182.9696,
+   "net_w": 6.0513,
+   "net_j_per_iter": 1.6192,
+   "gross_j_per_iter": 1.70884,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r2_neon_unpinned8",
+   "mode": "burst",
+   "seconds": 30.232,
+   "iters": 123,
+   "gross_j": 207.1593,
+   "avg_w": 6.8523,
+   "ms_per_iter": 245.788,
+   "iter_ms_median": 244.594,
+   "cpu_max_c": [
+    41.6,
+    69.9
+   ],
+   "skin_c": [
+    27.0,
+    30.1
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1730,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2102,
+     "min_mhz": 1555,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2030,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 605,
+   "voltage_mv": [
+    7872,
+    7672
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 8 --seconds 30 --label E2_r2_neon_unpinned8 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r2_neon_unpinned8.json",
+   "idle_w": 0.3126,
+   "net_j": 197.7089,
+   "net_w": 6.5397,
+   "net_j_per_iter": 1.60739,
+   "gross_j_per_iter": 1.68422,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r3_scalar_prime1",
+   "mode": "burst",
+   "seconds": 31.365,
+   "iters": 22,
+   "gross_j": 60.0575,
+   "avg_w": 1.9148,
+   "ms_per_iter": 1425.689,
+   "iter_ms_median": 1425.126,
+   "cpu_max_c": [
+    38.6,
+    42.6
+   ],
+   "skin_c": [
+    27.3,
+    28.0
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 692,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 627,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r3_scalar_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r3_scalar_prime1.json",
+   "idle_w": 0.3014,
+   "net_j": 50.6041,
+   "net_w": 1.6134,
+   "net_j_per_iter": 2.30019,
+   "gross_j_per_iter": 2.72989,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r3_neon_little4",
+   "mode": "burst",
+   "seconds": 31.569,
+   "iters": 15,
+   "gross_j": 34.9921,
+   "avg_w": 1.1084,
+   "ms_per_iter": 2104.575,
+   "iter_ms_median": 2102.991,
+   "cpu_max_c": [
+    32.3,
+    33.6
+   ],
+   "skin_c": [
+    27.0,
+    27.2
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1804,
+     "min_mhz": 1804,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 710,
+     "min_mhz": 710,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 844,
+     "min_mhz": 844,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 632,
+   "voltage_mv": [
+    7972,
+    7972
+   ],
+   "cc_gross_j": 344.39,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 0,1,2,3 --seconds 30 --label E2_r3_neon_little4 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r3_neon_little4.json",
+   "idle_w": 0.3026,
+   "net_j": 25.4394,
+   "net_w": 0.8058,
+   "net_j_per_iter": 1.69596,
+   "gross_j_per_iter": 2.3328,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r3_neon_mid3",
+   "mode": "burst",
+   "seconds": 30.193,
+   "iters": 96,
+   "gross_j": 190.6347,
+   "avg_w": 6.3138,
+   "ms_per_iter": 314.513,
+   "iter_ms_median": 313.516,
+   "cpu_max_c": [
+    45.3,
+    61.6
+   ],
+   "skin_c": [
+    28.0,
+    30.3
+   ],
+   "batt_temp_c": [
+    26.0,
+    26.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 706,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2150,
+     "min_mhz": 2150,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 604,
+   "voltage_mv": [
+    7772,
+    7772
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 3 --cpus 4,5,6 --seconds 30 --label E2_r3_neon_mid3 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r3_neon_mid3.json",
+   "idle_w": 2.3296,
+   "net_j": 120.2966,
+   "net_w": 3.9842,
+   "net_j_per_iter": 1.25309,
+   "gross_j_per_iter": 1.98578,
+   "idle_plugged": false,
+   "excluded": "idle_w 2.3296 > 2×median 0.302 (배경 활동)"
+  },
+  {
+   "label": "E2_r3_neon_prime1",
+   "mode": "burst",
+   "seconds": 30.507,
+   "iters": 27,
+   "gross_j": 127.0707,
+   "avg_w": 4.1652,
+   "ms_per_iter": 1129.903,
+   "iter_ms_median": 1135.233,
+   "cpu_max_c": [
+    44.3,
+    47.6
+   ],
+   "skin_c": [
+    34.7,
+    35.4
+   ],
+   "batt_temp_c": [
+    30.0,
+    30.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1743,
+     "min_mhz": 1708,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 891,
+     "min_mhz": 710,
+     "cap_min_mhz": 1555,
+     "cap_max_mhz": 1555
+    },
+    "cpu7": {
+     "mean_mhz": 1555,
+     "min_mhz": 1555,
+     "cap_min_mhz": 1555,
+     "cap_max_mhz": 1555
+    }
+   },
+   "plugged": false,
+   "n_samples": 610,
+   "voltage_mv": [
+    7772,
+    7772
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 1 --cpus 7 --seconds 30 --label E2_r3_neon_prime1 --power-json /data/local/tmp/bp/power/E2_1027_2200/E2_r3_neon_prime1.json",
+   "idle_w": 3.0477,
+   "net_j": 34.0934,
+   "net_w": 1.1175,
+   "net_j_per_iter": 1.26272,
+   "gross_j_per_iter": 4.70632,
+   "idle_plugged": false,
+   "excluded": "idle_w 3.0477 > 2×median 0.302 (배경 활동)"
+  },
+  {
+   "label": "E2_r3_neon_midprime4",
+   "mode": "burst",
+   "seconds": 30.175,
+   "iters": 118,
+   "gross_j": 202.3528,
+   "avg_w": 6.7059,
+   "ms_per_iter": 255.722,
+   "iter_ms_median": 254.727,
+   "cpu_max_c": [
+    44.3,
+    71.6
+   ],
+   "skin_c": [
+    30.1,
+    33.0
+   ],
+   "batt_temp_c": [
+    29.0,
+    29.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 735,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2112,
+     "min_mhz": 2112,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2148,
+     "min_mhz": 1785,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 603,
+   "voltage_mv": [
+    7772,
+    7672
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 4 --cpus 4,5,6,7 --seconds 30 --label E2_r3_neon_midprime4 --power-json /data/local/tmp/bp/power/E2_1027_r3b/E2_r3_neon_midprime4.json",
+   "idle_w": 0.2909,
+   "net_j": 193.5748,
+   "net_w": 6.415,
+   "net_j_per_iter": 1.64046,
+   "gross_j_per_iter": 1.71485,
+   "idle_plugged": false
+  },
+  {
+   "label": "E2_r3_neon_unpinned8",
+   "mode": "burst",
+   "seconds": 30.155,
+   "iters": 124,
+   "gross_j": 211.6185,
+   "avg_w": 7.0176,
+   "ms_per_iter": 243.187,
+   "iter_ms_median": 241.606,
+   "cpu_max_c": [
+    47.6,
+    74.9
+   ],
+   "skin_c": [
+    31.2,
+    34.0
+   ],
+   "batt_temp_c": [
+    30.0,
+    29.0
+   ],
+   "clocks": {
+    "cpu0": {
+     "mean_mhz": 1700,
+     "min_mhz": 691,
+     "cap_min_mhz": 1804,
+     "cap_max_mhz": 1804
+    },
+    "cpu4": {
+     "mean_mhz": 2096,
+     "min_mhz": 1555,
+     "cap_min_mhz": 2112,
+     "cap_max_mhz": 2112
+    },
+    "cpu7": {
+     "mean_mhz": 2044,
+     "min_mhz": 960,
+     "cap_min_mhz": 2150,
+     "cap_max_mhz": 2150
+    }
+   },
+   "plugged": false,
+   "n_samples": 603,
+   "voltage_mv": [
+    7772,
+    7572
+   ],
+   "cc_gross_j": 0.0,
+   "args": "--in test0 --out /data/local/tmp/bp/out_power.ppm --threads 8 --seconds 30 --label E2_r3_neon_unpinned8 --power-json /data/local/tmp/bp/power/E2_1027_r3b/E2_r3_neon_unpinned8.json",
+   "idle_w": 0.2957,
+   "net_j": 202.7016,
+   "net_w": 6.7219,
+   "net_j_per_iter": 1.63469,
+   "gross_j_per_iter": 1.7066,
+   "idle_plugged": false
+  }
+ ],
+ "summary": {
+  "E2_scalar_prime1": {
+   "n": 3,
+   "net_j_per_iter": 2.28969,
+   "net_w": 1.6052,
+   "avg_w": 1.9076,
+   "idle_w": 0.3014,
+   "ms_per_iter": 1426.231,
+   "iter_ms_median": 1425.291,
+   "iters": 22,
+   "net_j_per_iter_all": [
+    2.25649,
+    2.28969,
+    2.30019
+   ],
+   "any_plugged": false
+  },
+  "E2_neon_little4": {
+   "n": 3,
+   "net_j_per_iter": 1.68325,
+   "net_w": 0.8012,
+   "avg_w": 1.1072,
+   "idle_w": 0.306,
+   "ms_per_iter": 2103.714,
+   "iter_ms_median": 2097.375,
+   "iters": 15,
+   "net_j_per_iter_all": [
+    1.66462,
+    1.68325,
+    1.69596
+   ],
+   "any_plugged": false
+  },
+  "E2_neon_mid3": {
+   "n": 2,
+   "net_j_per_iter": 1.6088,
+   "net_w": 5.11745,
+   "avg_w": 5.41975,
+   "idle_w": 0.3023,
+   "ms_per_iter": 314.381,
+   "iter_ms_median": 313.618,
+   "iters": 95.5,
+   "net_j_per_iter_all": [
+    1.61137,
+    1.60624
+   ],
+   "any_plugged": false
+  },
+  "E2_neon_prime1": {
+   "n": 2,
+   "net_j_per_iter": 1.52081,
+   "net_w": 1.91415,
+   "avg_w": 2.2154,
+   "idle_w": 0.30125,
+   "ms_per_iter": 794.523,
+   "iter_ms_median": 793.769,
+   "iters": 38.0,
+   "net_j_per_iter_all": [
+    1.52279,
+    1.51883
+   ],
+   "any_plugged": false
+  },
+  "E2_neon_midprime4": {
+   "n": 3,
+   "net_j_per_iter": 1.6202,
+   "net_w": 6.2824,
+   "avg_w": 6.5847,
+   "idle_w": 0.3023,
+   "ms_per_iter": 257.897,
+   "iter_ms_median": 257.086,
+   "iters": 117,
+   "net_j_per_iter_all": [
+    1.6202,
+    1.6192,
+    1.64046
+   ],
+   "any_plugged": false
+  },
+  "E2_neon_unpinned8": {
+   "n": 3,
+   "net_j_per_iter": 1.61163,
+   "net_w": 6.5498,
+   "avg_w": 6.8568,
+   "idle_w": 0.307,
+   "ms_per_iter": 245.788,
+   "iter_ms_median": 244.594,
+   "iters": 123,
+   "net_j_per_iter_all": [
+    1.61163,
+    1.60739,
+    1.63469
+   ],
+   "any_plugged": false
+  }
+ }
+}

@@ -44,6 +44,15 @@ class CaptureController(ctx: Context, private val listener: Listener) {
     val chars: CameraCharacteristics? = cameraId?.let { mgr.getCameraCharacteristics(it) }
     val rawSize: Size = chars?.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
         ?.getOutputSizes(ImageFormat.RAW_SENSOR)?.maxByOrNull { it.width * it.height } ?: Size(0, 0)
+    /**
+     * 처리 크기: RAW가 16MP를 넘으면 가운데 4080×3072로 자른다 (오프셋 짝수 → CFA 위상 유지).
+     * Mi Mix 4 메인(108MP 센서)은 RAW_SENSOR가 6016×4512(27MP) 하나뿐 → 8장 슬롯 434MB + 출력이 Java 힙(512MB)을 넘어
+     * OutOfMemoryError. 자르면 C55(4080×3072)와 픽셀 수가 같아 장당 에너지 비교도 같은 조건이 된다.
+     */
+    val procSize: Size = if (rawSize.width.toLong() * rawSize.height > 16_000_000L)
+        Size(minOf(rawSize.width, 4080), minOf(rawSize.height, 3072)) else rawSize
+    val cropX = ((rawSize.width - procSize.width) / 2) and 1.inv()
+    val cropY = ((rawSize.height - procSize.height) / 2) and 1.inv()
     val hasManual: Boolean = chars?.get(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES)
         ?.contains(CameraCharacteristics.REQUEST_AVAILABLE_CAPABILITIES_MANUAL_SENSOR) == true
 
@@ -65,8 +74,9 @@ class CaptureController(ctx: Context, private val listener: Listener) {
     @Volatile var ready = false
         private set
     @Volatile private var current: BurstDumper? = null
+    private var lastSlots: Array<java.nio.ByteBuffer>? = null  // 연속 캡처(E4 capture) 슬롯 재사용
 
-    fun describe(): String = "camera=$cameraId raw=${rawSize.width}x${rawSize.height} manual=$hasManual " +
+    fun describe(): String = "camera=$cameraId raw=${rawSize.width}x${rawSize.height} proc=${procSize.width}x${procSize.height} manual=$hasManual " +
         "level=${chars?.get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)} " +
         "cfa=${chars?.get(CameraCharacteristics.SENSOR_INFO_COLOR_FILTER_ARRANGEMENT)}"
 
@@ -116,16 +126,17 @@ class CaptureController(ctx: Context, private val listener: Listener) {
     }
 
     /** 버스트 1회. dumpToDisk=true면 raw16 + meta.txt 를 files/burst_<ts>/ 에 쓴다 (PC 파이프라인 입력). */
-    fun shoot(dumpToDisk: Boolean): Boolean {
+    fun shoot(dumpToDisk: Boolean, reuseSlots: Boolean = false): Boolean {
         val d = device ?: return false
         val s = session ?: return false
         val c = chars ?: return false
         if (current != null) return false  // 이전 버스트 진행 중
-        val dumper = BurstDumper(appCtx, rawSize.width, rawSize.height, n, c, dumpToDisk) { done ->
+        val dumper = BurstDumper(appCtx, procSize.width, procSize.height, n, c, dumpToDisk, cropX, cropY, if (reuseSlots) lastSlots else null) { done ->
             current = null
             listener.onBurst(done)
         }
         current = dumper
+        lastSlots = dumper.slots
 
         val req = d.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE).apply {
             addTarget(rawReader!!.surface)

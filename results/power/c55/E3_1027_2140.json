@@ -1,0 +1,166 @@
+{
+ "calibration": {
+  "current_unit": "uA",
+  "discharge_sign": -1,
+  "gauge_update_ms_median": 250.11374999999998
+ },
+ "basis": "기기 전체(배터리) 기준 — SoC 단독 전력 아님",
+ "windows": [
+  {
+   "label": "E3_r1_off",
+   "mode": "app_stress",
+   "seconds": 198.242,
+   "iters": 150,
+   "gross_j": 869.7438,
+   "avg_w": 4.3873,
+   "ms_per_iter": 1321.6152331800001,
+   "iter_ms_median": 1262.0,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    29.0,
+    31.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 3965,
+   "voltage_mv": [
+    3836,
+    3784
+   ],
+   "cc_gross_j": 1124.412,
+   "args": null,
+   "idle_w": 2.6886,
+   "net_j": 336.7496,
+   "net_w": 1.6987,
+   "net_j_per_iter": 2.245,
+   "gross_j_per_iter": 5.79829,
+   "idle_plugged": false
+  },
+  {
+   "label": "E3_r1_thermal",
+   "mode": "app_stress",
+   "seconds": 197.616,
+   "iters": 150,
+   "gross_j": 879.7559,
+   "avg_w": 4.4519,
+   "ms_per_iter": 1317.43851512,
+   "iter_ms_median": 1260.0,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    28.0,
+    31.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 3952,
+   "voltage_mv": [
+    3828,
+    3715
+   ],
+   "cc_gross_j": 1269.223,
+   "args": null,
+   "idle_w": 2.8929,
+   "net_j": 308.0732,
+   "net_w": 1.559,
+   "net_j_per_iter": 2.05382,
+   "gross_j_per_iter": 5.86504,
+   "idle_plugged": false
+  },
+  {
+   "label": "E3_r2_thermal",
+   "mode": "app_stress",
+   "seconds": 200.635,
+   "iters": 150,
+   "gross_j": 893.588,
+   "avg_w": 4.4538,
+   "ms_per_iter": 1337.5669578266668,
+   "iter_ms_median": 1294.0,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    28.0,
+    32.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 4013,
+   "voltage_mv": [
+    3777,
+    3737
+   ],
+   "cc_gross_j": 1381.586,
+   "args": null,
+   "idle_w": 2.838,
+   "net_j": 324.1857,
+   "net_w": 1.6158,
+   "net_j_per_iter": 2.16124,
+   "gross_j_per_iter": 5.95725,
+   "idle_plugged": false
+  },
+  {
+   "label": "E3_r2_off",
+   "mode": "app_stress",
+   "seconds": 201.485,
+   "iters": 150,
+   "gross_j": 875.5429,
+   "avg_w": 4.3455,
+   "ms_per_iter": 1343.2324609466668,
+   "iter_ms_median": 1302.0,
+   "cpu_max_c": null,
+   "skin_c": null,
+   "batt_temp_c": [
+    28.0,
+    32.0
+   ],
+   "clocks": null,
+   "plugged": false,
+   "n_samples": 4030,
+   "voltage_mv": [
+    3763,
+    3736
+   ],
+   "cc_gross_j": 1427.874,
+   "args": null,
+   "idle_w": 2.8435,
+   "net_j": 302.6206,
+   "net_w": 1.502,
+   "net_j_per_iter": 2.01747,
+   "gross_j_per_iter": 5.83695,
+   "idle_plugged": false
+  }
+ ],
+ "summary": {
+  "E3_off": {
+   "n": 2,
+   "net_j_per_iter": 2.13124,
+   "net_w": 1.60035,
+   "avg_w": 4.3664,
+   "idle_w": 2.76605,
+   "ms_per_iter": 1332.42385,
+   "iter_ms_median": 1282.0,
+   "iters": 150.0,
+   "net_j_per_iter_all": [
+    2.245,
+    2.01747
+   ],
+   "any_plugged": false
+  },
+  "E3_thermal": {
+   "n": 2,
+   "net_j_per_iter": 2.10753,
+   "net_w": 1.5874,
+   "avg_w": 4.45285,
+   "idle_w": 2.86545,
+   "ms_per_iter": 1327.50274,
+   "iter_ms_median": 1277.0,
+   "iters": 150.0,
+   "net_j_per_iter_all": [
+    2.05382,
+    2.16124
+   ],
+   "any_plugged": false
+  }
+ }
+}

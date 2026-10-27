@@ -1,0 +1,66 @@
+{
+ "current_unit": "uA",
+ "discharge_sign": 1,
+ "median_abs_current_raw": 35000,
+ "screen_off_median_raw": 34000.0,
+ "gauge_update_ms_median": 250.1191665,
+ "gauge_update_ms_p10_p90": [
+  245.557916,
+  497.780625
+ ],
+ "sample_period_ms_median": 50.0163015,
+ "n_samples": 2785,
+ "plugged_any": false,
+ "windows": {
+  "val_screen_off": {
+   "seconds": 60.001106123,
+   "avg_w": 0.3030653835470489,
+   "median_raw": 34000.0,
+   "cc_avg_w": 0.0,
+   "plugged": false
+  },
+  "val_bright_min": {
+   "seconds": 30.001154312,
+   "avg_w": 0.44385062600978187,
+   "median_raw": 36000.0,
+   "cc_avg_w": 2.075872126529796,
+   "plugged": false
+  },
+  "val_bright_max": {
+   "seconds": 30.000971186,
+   "avg_w": 0.30565260911456116,
+   "median_raw": 34000.0,
+   "cc_avg_w": 0.0,
+   "plugged": false
+  }
+ },
+ "brightness_check": {
+  "max_minus_min_w": -0.1381980168952207,
+  "ok": false
+ },
+ "brightness_check_app": {
+  "method": "app window brightness 0.0/1.0 alternated x6, 15 s each, camera preview on",
+  "max_minus_adjacent_min_w": [
+   0.066,
+   0.073,
+   0.06,
+   0.075,
+   0.071
+  ],
+  "windows_w": {
+   "val3_1_b0.0": 2.317,
+   "val3_1_b1.0": 2.378,
+   "val3_2_b0.0": 2.308,
+   "val3_2_b1.0": 2.382,
+   "val3_3_b0.0": 2.311,
+   "val3_3_b1.0": 2.376,
+   "val3_4_b0.0": 2.32,
+   "val3_4_b1.0": 2.399,
+   "val3_5_b0.0": 2.327,
+   "val3_5_b1.0": 2.397,
+   "val3_6_b0.0": 2.325,
+   "val3_6_b1.0": 2.394
+  },
+  "ok": true
+ }
+}

@@ -30,6 +30,7 @@ float g_headroom = -1.f;
 bp::ThermalPolicy g_policy;
 bp::LatencyGovernor g_gov;
 bool g_use_gov = false;
+bool g_seg_enabled = true;  // 전력 실험 E4: 같은 버스트를 세그·보케 없이/있이 반복해 차분
 std::unique_ptr<bp::NdkCamera> g_ndk;
 ANativeWindow* g_ndk_window = nullptr;
 
@@ -131,7 +132,7 @@ Java_dev_burstpipe_Native_process(JNIEnv* env, jobject, jobjectArray frames, jin
   b.meta.frames.resize(n);
   bp::Timings t;
   auto t0 = std::chrono::steady_clock::now();
-  const bp::PipelineOutput& o = g_pipe->run(b, nullptr, g_seg.get(), t);
+  const bp::PipelineOutput& o = g_pipe->run(b, nullptr, g_seg_enabled ? g_seg.get() : nullptr, t);
   double wall = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
   if (g_adpf) g_adpf->report((int64_t)(wall * 1e6));
   if (g_thermal_policy && g_use_gov) g_gov.report(t.total());
@@ -143,6 +144,37 @@ Java_dev_burstpipe_Native_process(JNIEnv* env, jobject, jobjectArray frames, jin
   js.pop_back(); js += extra;
   LOGI("timings %s", js.c_str());
   return env->NewStringUTF(js.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_dev_burstpipe_Native_setSegEnabled(JNIEnv*, jobject, jboolean on) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  g_seg_enabled = on;
+}
+
+// 세그만: frame 0 → 256² RGB(전처리) → 추론. 반환 {"prep":ms,"infer":ms}, 실패 시 ""
+extern "C" JNIEXPORT jstring JNICALL
+Java_dev_burstpipe_Native_segOnly(JNIEnv* env, jobject, jobject frame0, jstring metaTxt) {
+  std::lock_guard<std::mutex> lk(g_mu);
+  if (!g_seg) return env->NewStringUTF("");
+  bp::BurstMeta meta;
+  const char* ms = env->GetStringUTFChars(metaTxt, nullptr);
+  std::istringstream is(ms);
+  const bool ok = bp::parse_meta(is, meta);
+  env->ReleaseStringUTFChars(metaTxt, ms);
+  auto* p = static_cast<uint16_t*>(env->GetDirectBufferAddress(frame0));
+  if (!ok || !p || meta.width != g_w || meta.height != g_h) return env->NewStringUTF("");
+  static std::vector<float> rgb(256 * 256 * 3), mask(256 * 256);
+  const bp::Image<uint16_t> img{g_w, g_h, g_w, p};
+  auto t0 = std::chrono::steady_clock::now();
+  bp::bayer_to_rgb256(img, meta, g_params.finish.ev_gain, rgb.data());
+  auto t1 = std::chrono::steady_clock::now();
+  if (!g_seg->run(rgb.data(), mask.data())) return env->NewStringUTF("");
+  auto t2 = std::chrono::steady_clock::now();
+  char buf[96];
+  std::snprintf(buf, sizeof buf, "{\"prep\":%.3f,\"infer\":%.3f}",
+                std::chrono::duration<double, std::milli>(t1 - t0).count(), std::chrono::duration<double, std::milli>(t2 - t1).count());
+  return env->NewStringUTF(buf);
 }
 
 // ADPF 세션(목표 ms, 0이면 끔) + 발열 정책. init 이후 호출. 반환: 상태 문자열

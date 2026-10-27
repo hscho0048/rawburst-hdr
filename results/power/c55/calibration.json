@@ -1,0 +1,42 @@
+{
+ "current_unit": "uA",
+ "discharge_sign": -1,
+ "median_abs_current_raw": 111695.5,
+ "screen_off_median_raw": -40283.0,
+ "gauge_update_ms_median": 250.11374999999998,
+ "gauge_update_ms_p10_p90": [
+  200.303906,
+  999.901145
+ ],
+ "sample_period_ms_median": 49.993907,
+ "n_samples": 6162,
+ "plugged_any": false,
+ "windows": {
+  "val_screen_off": {
+   "seconds": 60.001742998,
+   "avg_w": 0.21714821610623156,
+   "median_raw": -40283.0,
+   "cc_avg_w": 0.0,
+   "plugged": false
+  },
+  "val_bright_min": {
+   "seconds": 30.003773843,
+   "avg_w": 0.682593314181581,
+   "median_raw": -136415.0,
+   "cc_avg_w": 1.778421683859244,
+   "plugged": false
+  },
+  "val_bright_max": {
+   "seconds": 30.002909051,
+   "avg_w": 1.0479259762177777,
+   "median_raw": -222781.0,
+   "cc_avg_w": 1.7784729443834222,
+   "plugged": false
+  }
+ },
+ "brightness_check": {
+  "max_minus_min_w": 0.36533266203619674,
+  "ok": true
+ },
+ "dumpsys_current_now_median": -183108
+}
