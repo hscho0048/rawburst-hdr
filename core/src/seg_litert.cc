@@ -6,6 +6,7 @@
 #include <thread>
 #include <cstring>
 #include <vector>
+#include <string>
 #include "burstpipe/seg.h"
 #include <algorithm>
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <dlfcn.h>
 #include <cstdlib>
 #include "TFLiteDelegate/QnnTFLiteDelegate.h"
+#include <sys/system_properties.h>
 #endif
 #if defined(BP_ANDROID)
 #include <android/log.h>
@@ -28,6 +30,23 @@
 
 namespace bp {
 namespace {
+
+#if defined(BP_HAVE_QNN)
+// SoC → Hexagon HTP 아키텍처. QNN(libQnnHtp.so)이 실제 선택을 하지만, 해당 버전의 Stub/Skel이 패키징돼 있는지
+// 미리 확인하고 로그로 남긴다 (Mix 4 포팅: SM8350 = v68, C55 SM7450 = v69 — 하나만 넣으면 다른 기기에서 NPU가 조용히 실패).
+std::string htp_arch_for_soc(std::string* soc_out) {
+  char soc[PROP_VALUE_MAX] = {0};
+  if (__system_property_get("ro.soc.model", soc) <= 0) __system_property_get("ro.board.platform", soc);
+  if (soc_out) *soc_out = soc;
+  const std::string s(soc);
+  struct M { const char* key; const char* arch; };
+  static const M kMap[] = {{"SM8350", "v68"}, {"lahaina", "v68"}, {"SM7325", "v68"}, {"yupik", "v68"},
+                           {"SM7450", "v69"}, {"SM8450", "v69"}, {"SM8475", "v69"}, {"SM7475", "v69"}, {"taro", "v69"},
+                           {"SM8550", "v73"}, {"kalama", "v73"}, {"SM8650", "v75"}, {"pineapple", "v75"}, {"SM8750", "v79"}};
+  for (auto& m : kMap) if (s.find(m.key) != std::string::npos) return m.arch;
+  return "";
+}
+#endif
 
 // ---- MediaPipe 커스텀 op: Convolution2DTransposeBias ------------------------------------------------
 // MediaPipe selfie_segmenter는 표준 TFLite에 없는 이 op를 쓴다 (MediaPipe 런타임이 자체 등록).
@@ -174,6 +193,17 @@ class LiteRtSegmenter : public Segmenter {
     auto create = (TfLiteDelegate * (*)(const TfLiteQnnDelegateOptions*)) dlsym(h, "TfLiteQnnDelegateCreate");
     qnn_delete_ = (void (*)(TfLiteDelegate*))dlsym(h, "TfLiteQnnDelegateDelete");
     if (!opt_default || !create || !qnn_delete_) { SEG_LOG("seg: QNN delegate symbols missing\n"); return false; }
+    std::string soc;
+    const std::string arch = htp_arch_for_soc(&soc);
+    if (!arch.empty()) {
+      std::string stub = "libQnnHtp" + arch + "Stub.so";
+      stub[9] = 'V';  // libQnnHtpV68Stub.so
+      void* hs = dlopen(stub.c_str(), RTLD_NOW | RTLD_LOCAL);
+      SEG_LOG("seg: NPU soc=%s -> HTP %s, %s %s\n", soc.c_str(), arch.c_str(), stub.c_str(), hs ? "found" : "MISSING (scripts/fetch_qnn.sh HTP_ARCHS)");
+      if (hs) dlclose(hs);
+    } else {
+      SEG_LOG("seg: NPU soc=%s -> HTP arch unknown (QNN auto-detect)\n", soc.c_str());
+    }
     TfLiteQnnDelegateOptions o = opt_default();
     o.backend_type = kHtpBackend;
     o.htp_options.precision = kHtpFp16;            // float16 모델 → HTP fp16 (양자화 모델이면 kHtpQuantized)

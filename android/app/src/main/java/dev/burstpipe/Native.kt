@@ -9,6 +9,12 @@ object Native {
     /** delegate: 0 cpu, 1 gpu, 2 npu. modelPath null이면 보케 없음. 반환: 세그멘터 상태 문자열 */
     external fun init(w: Int, h: Int, maxFrames: Int, modelPath: String?, delegate: Int, threads: Int, cpus: IntArray): String
 
+    /** 전력 실험 E4: false면 process가 세그·보케를 건너뛴다 (같은 버스트로 차분) */
+    external fun setSegEnabled(on: Boolean)
+
+    /** 세그만 (전처리 + 추론). frame0: direct RAW16. 반환 {"prep":ms,"infer":ms}, 실패 시 "" */
+    external fun segOnly(frame0: ByteBuffer, metaTxt: String): String
+
     /** ADPF 목표(ms, 0=끔) + 발열 기반 N 정책. init 뒤에 호출 */
     external fun setPolicy(adpfTargetMs: Int, thermalPolicy: Boolean): String
 
